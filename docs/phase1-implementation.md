@@ -1,6 +1,6 @@
 # 第一阶段实施与验收记录
 
-更新日期：2026-11-19（复审）
+更新日期：2026-11-19（第一阶段收尾）
 来源文档：`C语言考试系统开发文档.md` 第 10 节“第 1 阶段：基础环境”，以及需求分析与子系统设计文档的已确认规则。
 
 ## 目标
@@ -12,6 +12,14 @@
 - MySQL 可以连接。
 
 ## 已实施
+
+### 环境收尾（本轮）
+
+- Compose 固定使用 `mysql:8.4.9`，宿主机端口只绑定 `127.0.0.1`，不发布 33060。
+- 新增 `.env.example`；本机 `.env` 由使用者生成并被 Git 忽略，Compose 与 API 启动脚本使用同一套本地变量。
+- `tools/check-environment.ps1` 改为默认只读检查实际 Unity、目标 .NET SDK、Docker CLI/Compose/引擎和项目容器状态；`-InstallMissing` 不再安装原生 MySQL。
+- 新增 `tools/start-local.ps1`，按超时等待容器内应用账号认证查询，检查 API 已运行/端口冲突后再启动本机 API；`-Stop` 只停止该脚本记录的 API 和 Compose 服务，不删除卷。
+- `/health` 的 503 响应不再返回内部异常详情，服务端日志保留诊断信息。
 
 - 将 `C:\UnityProject\C_Client` 初始化为 Git 仓库并关联 `https://github.com/ireliaemoji/C_Programming_System.git`。
 - 保留 Unity 2022.3.62f3c1 项目结构和 `SampleScene`。
@@ -39,14 +47,16 @@
 | Unity 批处理验证 | 未完成 | 现有 Unity 实例占用项目，批处理启动被拒绝 |
 | GitHub 推送 | 已通过 | `main` 已与远程提交同步 |
 
+### 本轮 A 机收尾检查
+
+详见 [A 机验收记录](validation/2026-11-19-A-pending-cb29693.md)。本机当前未发现 Docker CLI，且 Unity 未在可探测路径；因此 Docker 容器、容器认证持久化和 Unity 实际场景请求标为未执行，不能用历史原生 MySQL/Unity 用户反馈替代。
+
 ## 阶段结论
 
-原始三项功能验收（API 启动、MySQL 连接、Unity 请求健康检查）已通过；Unity 结果来自用户实际运行日志。环境安装要求中的 Docker 仍待重启后的运行验证，批处理编译检查尚未补做，因此不能宣告所有环境验收结束。状态为“本地功能闭环通过，Docker 环境待验收”。
+历史原始三项功能验收（API 启动、原生 MySQL 连接、Unity 请求健康检查）已通过；本轮 Docker 默认环境和失败响应代码已实施，但本机 Docker/Unity 现场验收与 B 机独立验收尚未完成。状态为“环境收尾已提交，A Docker/Unity 与 B 独立验收待执行”。
 
 ## 下一步
 
-1. 保存工作并重启 Windows，验证 Docker 引擎；功能启用命令已由用户执行。
-2. 当前采用 A 开发、B 独立验收，各自运行本机 API 和 Docker MySQL。上一版共享 B 数据库的安排仅保留为后续部署选项，见 [多电脑方案](multi-computer-deployment.md)。
-3. 先按 [下一轮交接任务书](tasks/next-implementation.md) 收尾：调整 Docker 默认环境工具、统一数据库版本、处理端口冲突、机密配置和启动验证；两机不迁移整库、不开放远程访问。
-4. A 提交可复验版本，B 按 [验收模板](validation/template.md) 独立验证并记录问题。A 的成功结果不等于 B 已通过。
-5. Docker 环境收尾完成后进入第二阶段，先实现账号、题库和权限的最小闭环，具体范围另行确认。
+1. A 机人工安装/启动 Docker Desktop 和对应 Unity 版本后，按验收记录补做 Docker、持久化和 SampleScene 请求。
+2. B 按同一提交和 [验收模板](validation/template.md) 独立启动 `.env`、容器、API 与 Unity，记录实际结果；A 的结果不等于 B 已通过。
+3. Docker 环境收尾和 B 验收完成后，再另行确认第二阶段账号、题库和权限的最小闭环。

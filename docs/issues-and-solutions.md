@@ -92,3 +92,18 @@
 - 当前决定：A 开发、B 独立验收，两台电脑各运行本机 API 和独立 Docker MySQL，通过 Git 同步代码、结构迁移、种子数据与脱敏问题记录。共享 B 数据库仅保留为未来部署选项。
 - 安全边界：当前不开放跨电脑 API/数据库端口，不同步真实数据或秘密。Compose 的端口映射、示例密码和原生安装工具仍需在下一轮调整。
 - 状态：方案已记录；新工具与 Docker 验收尚未实施。见 [多电脑方案](multi-computer-deployment.md)、[下一轮任务书](tasks/next-implementation.md) 和 [验收模板](validation/template.md)。
+
+## ISSUE-013：Docker 默认流程与本机原生 MySQL 的边界
+
+- 现象：旧 Compose 发布所有网卡的 3306、使用示例密码；旧检查工具还可启动原生 MySQL，无法作为 A/B 一致的 Docker 流程。
+- 处理：固定 `mysql:8.4.9`，仅绑定 `127.0.0.1`，凭据改由未跟踪 `.env` 提供；环境检查不再安装/启动原生 MySQL，启动脚本只管理项目 Compose 服务和自己记录的 API 进程。
+- 数据保护：未停止或覆盖已有原生 MySQL；已有 Docker 卷密码不匹配时保留卷，按原密码恢复或人工迁移，不执行 `down -v`。
+- 状态：已实施；Docker 引擎和容器实际验证待 A/B 现场执行。
+
+## ISSUE-014：健康检查失败响应泄露内部异常
+
+- 现象：旧 `/health` 503 JSON 包含数据库异常消息。
+- 原因：异常消息直接写入客户端响应。
+- 处理：响应仅返回 `status=degraded` 和 `database=unavailable`，异常通过服务端日志记录。
+- 复验：A 机可用 API 启动后用不可用连接配置请求 `/health`，应得到 503 且 JSON 不包含 `detail` 或连接字符串；运行记录见 [A 机验收记录](validation/2026-11-19-A-pending-cb29693.md)。
+- 状态：代码已实施，现场 Docker/Unity 验证待执行。

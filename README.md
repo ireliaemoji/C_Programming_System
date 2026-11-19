@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-第一阶段的 API、原生 MySQL 和 Unity 健康检查闭环已验证成功。用户已执行 Windows 虚拟机平台/WSL 功能启用命令，尚待重启后验证 Docker 引擎与容器。当前采用“A 开发、B 独立验收”：两台电脑各运行本机 API 和独立 Docker MySQL，通过 Git 交接代码与脱敏问题记录。工具尚未按新方案调整，下一步先完成第一阶段环境收尾。
+第一阶段环境收尾已实施：A/B 使用固定的 MySQL 8.4.9 Docker 镜像、回环端口和各自 `.env` 私密配置；`tools/check-environment.ps1` 默认只读检查，`tools/start-local.ps1` 负责启动项目数据库和本机 API。A 的 Docker/Unity 实际运行验收与 B 的独立验收仍需在具备对应环境的机器上执行。
 
 ## 目录
 
@@ -15,8 +15,10 @@
 - `docs/implementation-log.md`：每轮实施与验证记录
 - `Assets/`：Unity 客户端（Unity 2022.3.62f3c1）
 - `Server/CExam.Api/`：ASP.NET Core API（当前目标框架 `net10.0`）
-- `docker-compose.yml`：本地 MySQL 8.0 配置
-- `tools/check-environment.ps1`：环境检查、可选依赖安装和本地 MySQL 启动工具
+- `docker-compose.yml`：本地 MySQL 8.4.9 配置（仅发布 127.0.0.1）
+- `.env.example`：本地 Docker/API 配置示例（不得提交 `.env`）
+- `tools/check-environment.ps1`：只读环境检查和可选依赖安装
+- `tools/start-local.ps1`：加载 `.env`、启动 Docker MySQL、验证认证查询并启动 API
 - `docs/phase1-implementation.md`：第一阶段实施与验收记录
 - `docs/issues-and-solutions.md`：问题、原因、处理和剩余动作
 - `docs/multi-computer-deployment.md`：多电脑数据源安排、迁移与安全边界
@@ -25,17 +27,18 @@
 
 ## 本地启动
 
-以下是当前历史实现的启动方式；其中安装/启动工具仍包含原生 MySQL 路径，尚未改成新的 Docker 默认流程。新一轮实施要求见 [交接任务书](docs/tasks/next-implementation.md)。
+推荐流程只使用项目专用 Docker MySQL；不会启动、停止或删除本机已有的原生 MySQL 数据目录。
 
 1. 检查环境：`powershell -ExecutionPolicy Bypass -File tools/check-environment.ps1`
-2. 如果需要自动安装缺失的软件：`powershell -ExecutionPolicy Bypass -File tools/check-environment.ps1 -InstallMissing`
-3. Docker Desktop 可用时启动数据库：`docker compose up -d mysql`
-4. Docker 引擎不可用时启动本地 MySQL：`powershell -ExecutionPolicy Bypass -File tools/check-environment.ps1 -StartMySql`
-5. 启动 API：`dotnet run --project Server/CExam.Api --urls http://localhost:5000`
-6. 检查接口：`http://localhost:5000/health`
-7. 用 Unity 打开项目并运行 `Assets/Scenes/SampleScene.unity`，场景中的 `ApiHealthProbe` 会显示健康检查结果。
+2. 首次使用复制 `.env.example` 为 `.env`，仅在本机设置随机的 `MYSQL_ROOT_PASSWORD` 和 `MYSQL_PASSWORD`；可按需修改 `MYSQL_HOST_PORT`。
+3. 缺少必需软件时可执行：`powershell -ExecutionPolicy Bypass -File tools/check-environment.ps1 -InstallMissing`。Unity Hub、Docker Desktop 启动、授权、WSL/虚拟化和系统重启仍可能需要人工完成。
+4. 启动数据库和 API：`powershell -ExecutionPolicy Bypass -File tools/start-local.ps1`。脚本等待容器内应用账号认证并执行 `SELECT 1`，再在 `127.0.0.1:5000` 启动 API；重复执行不会覆盖卷、凭据或占用中的健康 API。
+5. 检查接口：`http://127.0.0.1:5000/health`。
+6. 用 Unity 打开项目并运行 `Assets/Scenes/SampleScene.unity`，场景中的 `ApiHealthProbe` 会显示健康检查结果。
 
-`/health` 返回 `200` 表示 API 和 MySQL 均可用；返回 `503` 表示 API 已启动但数据库尚未连接。
+停止 API 可执行 `powershell -ExecutionPolicy Bypass -File tools/start-local.ps1 -Stop`，然后执行 `docker compose down` 也可只停止项目容器。不要使用 `docker compose down -v`，以免删除项目卷；不要把 A 的卷或 `.env` 复制到 B。
+
+`/health` 返回 `200` 表示 API 和 MySQL 均可用；返回 `503` 表示 API 已启动但数据库尚未连接，响应只包含状态字段，不返回内部异常详情。
 
 ## 阶段范围
 

@@ -141,5 +141,9 @@ crashlytics-build.properties
 **/bin/
 **/obj/
 
+# Local development credentials, process state, and logs
+.env
+.local/
+
 !Server/**/*.csproj
 

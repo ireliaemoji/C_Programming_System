@@ -13,3 +13,12 @@
 - 状态：文档规则已实施；不包含代码、数据库或 Docker 环境变更。
 - 遗留：新对话需在本仓库启动并读取规则；仓库外对话需显式读取。不把 A 的历史验证结果记成 B 已完成。
 - 保护边界：用户已有 `ProjectSettings/ProjectSettings.asset` 修改保留，本轮不提交。
+
+## 2026-11-19：第一阶段环境收尾与独立验收交接
+
+- 需求：按 `docs/tasks/next-implementation.md` 完成 Docker 默认环境、共享本机配置、启动检查与独立验收交接；不开始登录、题库或考试业务。
+- 实施：Compose 固定 `mysql:8.4.9`，只绑定 `127.0.0.1`，增加容器健康检查；新增 `.env.example` 并忽略 `.env`、`.local/`；API 503 响应移除异常详情并保留服务端告警日志；重写 `tools/check-environment.ps1` 为只读环境检查/显式安装，新增 `tools/start-local.ps1` 负责加载配置、等待认证 `SELECT 1`、处理端口冲突和启动/停止 API。
+- 文档：同步 README、`docs/multi-computer-deployment.md`、`docs/phase1-implementation.md`、`docs/decisions.md`、`docs/issues-and-solutions.md`、`docs/tasks/next-implementation.md` 和 A 机验收记录。
+- 数据边界：未操作父目录中用户未跟踪资料；未修改或提交 `ProjectSettings/ProjectSettings.asset` 的用户改动；未删除 Docker 卷、原生 MySQL 数据或强制关闭已有进程。
+- 验证：静态 PowerShell 语法检查、`dotnet build --no-restore`、API 503 脱敏响应检查和文档链接检查；Docker/Unity 实际运行受本机缺少 Docker CLI/Unity 可探测安装阻塞，详见验收记录。
+- 状态：代码与文档已实施，提交/推送后交 B 独立验收；B 记录不得由 A 结果代填。

@@ -1,104 +1,94 @@
 [CmdletBinding()]
-param(
-    [switch]$InstallMissing,
-    [switch]$StartMySql
-)
+param([switch]$InstallMissing)
 
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $unityVersionFile = Join-Path $projectRoot 'ProjectSettings/ProjectVersion.txt'
-$mysqlRoot = 'C:\Program Files\MySQL\MySQL Server 8.4\bin'
-$mysqlData = Join-Path $env:LOCALAPPDATA 'CExam/mysql-data'
-$mysqlLog = Join-Path $env:LOCALAPPDATA 'CExam/mysql.log'
+$projectFile = Join-Path $projectRoot 'Server/CExam.Api/CExam.Api.csproj'
+$failures = [System.Collections.Generic.List[string]]::new()
 
-function Test-Command([string]$Name) {
-    return $null -ne (Get-Command $Name -ErrorAction SilentlyContinue)
-}
+function Test-Command([string]$Name) { return $null -ne (Get-Command $Name -ErrorAction SilentlyContinue) }
 
 function Install-WingetPackage([string]$Id) {
-    if (-not (Test-Command 'winget')) {
-        throw 'winget is required to install missing packages.'
-    }
+    if (-not (Test-Command 'winget')) { throw 'winget is required to install missing packages.' }
     & winget install --id $Id -e --accept-source-agreements --accept-package-agreements --silent
+    if ($LASTEXITCODE -ne 0) { throw "winget failed to install $Id (exit code $LASTEXITCODE)." }
 }
 
-function Add-PathIfPresent([string]$Path) {
-    if ((Test-Path $Path) -and (($env:Path -split ';') -notcontains $Path)) {
-        $env:Path = "$Path;$env:Path"
+function Find-Docker {
+    $command = Get-Command docker -ErrorAction SilentlyContinue
+    if ($command) { return $command.Source }
+    $default = 'C:\Program Files\Docker\Docker\resources\bin\docker.exe'
+    if (Test-Path -LiteralPath $default) { return $default }
+    return $null
+}
+
+function Find-Unity([string]$ExpectedVersion) {
+    $candidates = @(
+        (Join-Path ${env:ProgramFiles} 'Unity\Hub\Editor\*\Editor\Unity.exe'),
+        (Join-Path ${env:ProgramFiles} 'Unity\Editor\Unity.exe'),
+        (Join-Path ${env:LOCALAPPDATA} 'Unity\Hub\Editor\*\Editor\Unity.exe')
+    )
+    foreach ($candidate in $candidates) {
+        $match = Get-ChildItem -Path $candidate -File -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($match -and $match.VersionInfo.ProductVersion -like "$ExpectedVersion*") { return $match }
     }
+    return $null
+}
+
+function Test-DockerEngine([string]$DockerPath) {
+    $job = Start-Job -ScriptBlock { param($path) & $path info --format '{{.ServerVersion}}' *> $null; $LASTEXITCODE } -ArgumentList $DockerPath
+    if (-not (Wait-Job -Job $job -Timeout 15)) {
+        Stop-Job -Job $job -ErrorAction SilentlyContinue
+        Remove-Job -Job $job -Force -ErrorAction SilentlyContinue
+        return $false
+    }
+    $exitCode = Receive-Job -Job $job
+    Remove-Job -Job $job -Force -ErrorAction SilentlyContinue
+    return [int]$exitCode -eq 0
 }
 
 Write-Output "Project: $projectRoot"
-if (Test-Path $unityVersionFile) {
-    Write-Output "Unity: $((Get-Content $unityVersionFile | Select-Object -First 1) -replace 'm_EditorVersion: ', '')"
+if (-not (Test-Path -LiteralPath $unityVersionFile)) {
+    $failures.Add('Unity version file is missing.')
 } else {
-    Write-Warning 'Unity project version file is missing.'
+    $expectedUnity = ((Get-Content -LiteralPath $unityVersionFile | Select-Object -First 1) -replace '^m_EditorVersion:\s*', '').Trim()
+    $unity = Find-Unity $expectedUnity
+    if ($unity) { Write-Output "Unity: $($unity.VersionInfo.ProductVersion) ($($unity.FullName))" }
+    else {
+        Write-Output "Unity: MISSING (required $expectedUnity)"
+        $failures.Add("Unity $expectedUnity is not installed or discoverable; install it through Unity Hub or complete it manually.")
+    }
 }
 
-if (-not (Test-Command 'dotnet')) {
-    if ($InstallMissing) { Install-WingetPackage 'Microsoft.DotNet.SDK.10' } else { Write-Warning '.NET SDK is missing.' }
-}
+$targetFramework = ((Select-String -LiteralPath $projectFile -Pattern '<TargetFramework>([^<]+)</TargetFramework>').Matches | Select-Object -First 1).Groups[1].Value
+$requiredDotnetMajor = [int]($targetFramework -replace '^net', '' -replace '\..*$', '')
+if (-not (Test-Command 'dotnet') -and $InstallMissing) { Install-WingetPackage 'Microsoft.DotNet.SDK.10' }
+if (Test-Command 'dotnet') {
+    $dotnetVersion = (& dotnet --version 2>$null).Trim()
+    Write-Output ".NET SDK: $dotnetVersion"
+    if ([int]($dotnetVersion.Split('.')[0]) -lt $requiredDotnetMajor) { $failures.Add(".NET SDK $requiredDotnetMajor or newer is required for $targetFramework.") }
+} else { $failures.Add(".NET SDK for $targetFramework is missing.") }
 
-$dockerExe = (Get-Command 'docker' -ErrorAction SilentlyContinue).Source
+$dockerExe = Find-Docker
+if (-not $dockerExe -and $InstallMissing) { Install-WingetPackage 'Docker.DockerDesktop'; $dockerExe = Find-Docker }
 if (-not $dockerExe) {
-    $dockerExe = 'C:\Program Files\Docker\Docker\resources\bin\docker.exe'
-    Add-PathIfPresent (Split-Path $dockerExe)
-}
-if (-not (Test-Path $dockerExe)) {
-    if ($InstallMissing) {
-        Install-WingetPackage 'Docker.DockerDesktop'
-        Add-PathIfPresent (Split-Path $dockerExe)
-    } else { Write-Warning 'Docker Desktop is missing.' }
-}
-
-$mysqlExe = (Get-Command 'mysql' -ErrorAction SilentlyContinue).Source
-if (-not $mysqlExe) {
-    $mysqlExe = Join-Path $mysqlRoot 'mysql.exe'
-    Add-PathIfPresent $mysqlRoot
-}
-if (-not (Test-Path $mysqlExe)) {
-    if ($InstallMissing) {
-        Install-WingetPackage 'Oracle.MySQL'
-        $mysqlExe = Join-Path $mysqlRoot 'mysql.exe'
-        Add-PathIfPresent $mysqlRoot
-    } else { Write-Warning 'MySQL is missing.' }
-}
-
-Write-Output "dotnet: $(if (Test-Command 'dotnet') { (dotnet --version).Trim() } else { 'MISSING' })"
-Write-Output "docker: $(if (Test-Path $dockerExe) { (& $dockerExe --version).Trim() } else { 'MISSING' })"
-Write-Output "mysql: $(if (Test-Path $mysqlExe) { (& $mysqlExe --version).Trim() } else { 'MISSING' })"
-
-if (Test-Path $dockerExe) {
-    $dockerStatus = (& $dockerExe desktop status 2>$null | Out-String)
-    if ($dockerStatus -match 'Status\s+running') {
+    $failures.Add('Docker CLI is missing; install Docker Desktop manually or use -InstallMissing.')
+} else {
+    Write-Output "Docker CLI: $((& $dockerExe --version 2>$null | Out-String).Trim())"
+    $composeVersion = (& $dockerExe compose version 2>$null | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0) { $failures.Add('Docker Compose plugin is missing.') }
+    else { Write-Output "Docker Compose: $composeVersion" }
+    if (Test-DockerEngine $dockerExe) {
         Write-Output 'Docker engine: READY'
+        $services = & $dockerExe compose ps --status running --services 2>$null
+        if ($services -contains 'mysql') { Write-Output 'Project MySQL container: RUNNING (existing state preserved)' }
+        else { Write-Output 'Project MySQL container: NOT RUNNING (start with tools/start-local.ps1)' }
     } else {
-        Write-Warning 'Docker is installed but the engine is unavailable. Check Docker Desktop, WSL2, Virtual Machine Platform, and administrator/restart requirements.'
+        $failures.Add('Docker CLI is installed but the engine is unavailable; start Docker Desktop. A Windows restart or administrator action may be required.')
     }
 }
 
-if (Test-Path $mysqlExe) {
-    $mysqlService = Get-Service | Where-Object { $_.DisplayName -match 'MySQL' -or $_.Name -match 'mysql' } | Select-Object -First 1
-    if ($mysqlService) {
-        Write-Output "MySQL service: $($mysqlService.Status)"
-    } else {
-        Write-Output 'MySQL service: NOT REGISTERED (a user-owned development instance can still be started)'
-    }
-}
-
-if ($StartMySql) {
-    $mysqldExe = Join-Path $mysqlRoot 'mysqld.exe'
-    if (-not (Test-Path $mysqldExe)) { throw "mysqld.exe not found at $mysqldExe" }
-    New-Item -ItemType Directory -Force $mysqlData | Out-Null
-    if (-not (Test-Path (Join-Path $mysqlData 'ibdata1'))) {
-        & $mysqldExe --initialize-insecure --datadir=$mysqlData --console
-    }
-    $running = Get-Process mysqld -ErrorAction SilentlyContinue
-    if (-not $running) {
-        Start-Process -FilePath $mysqldExe -ArgumentList @("--datadir=$mysqlData", '--port=3306', '--bind-address=127.0.0.1', '--mysqlx=0', "--log-error=$mysqlLog", '--console') -WindowStyle Hidden | Out-Null
-        Start-Sleep -Seconds 5
-    }
-    & $mysqlExe --protocol=tcp --host=127.0.0.1 --port=3306 --user=root -e "CREATE DATABASE IF NOT EXISTS c_exam; CREATE USER IF NOT EXISTS 'exam_app'@'localhost' IDENTIFIED BY 'change-me'; GRANT ALL PRIVILEGES ON c_exam.* TO 'exam_app'@'localhost'; FLUSH PRIVILEGES;"
-    Write-Output 'MySQL development instance: READY (127.0.0.1:3306/c_exam)'
-}
+if ($failures.Count -gt 0) { Write-Error (($failures | ForEach-Object { "- $_" }) -join [Environment]::NewLine); exit 1 }
+Write-Output 'Environment: READY'
 

@@ -2,12 +2,11 @@ using MySqlConnector;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSingleton(new HealthOptions(
-    builder.Configuration.GetConnectionString("Default")
-        ?? "Server=localhost;Port=3306;Database=c_exam;User=exam_app;Password=change-me;"));
+    builder.Configuration.GetConnectionString("Default") ?? string.Empty));
 
 var app = builder.Build();
 
-app.MapGet("/health", async (HealthOptions options, CancellationToken cancellationToken) =>
+app.MapGet("/health", async (HealthOptions options, ILogger<Program> logger, CancellationToken cancellationToken) =>
 {
     try
     {
@@ -17,10 +16,11 @@ app.MapGet("/health", async (HealthOptions options, CancellationToken cancellati
         await command.ExecuteScalarAsync(cancellationToken);
         return Results.Ok(new { status = "ok", database = "ok" });
     }
-    catch (Exception exception) when (exception is MySqlException or InvalidOperationException)
+    catch (Exception exception) when (exception is MySqlException or InvalidOperationException or ArgumentException)
     {
+        logger.LogWarning("Health check database connection failed ({ExceptionType}).", exception.GetType().Name);
         return Results.Json(
-            new { status = "degraded", database = "unavailable", detail = exception.Message },
+            new { status = "degraded", database = "unavailable" },
             statusCode: StatusCodes.Status503ServiceUnavailable);
     }
 });
