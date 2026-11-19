@@ -1,22 +1,27 @@
 # C 语言考试系统
 
-第一阶段基础环境已建立：Unity 客户端、ASP.NET Core 健康检查接口和本地 MySQL 配置。
+## 当前状态
+
+第一阶段基础环境的代码和仓库结构已建立，提交已推送到 GitHub。阶段验收仍有两项本机环境工作未完成：启动 MySQL 并验证数据库连接，以及关闭现有 Unity 编辑器实例后完成一次 Unity 批处理编译/运行验证。
 
 ## 目录
 
 - `Assets/`：Unity 客户端（Unity 2022.3.62f3c1）
-- `Server/CExam.Api/`：ASP.NET Core API
-- `docker-compose.yml`：本地 MySQL 8.0
+- `Server/CExam.Api/`：ASP.NET Core API（当前目标框架 `net10.0`）
+- `docker-compose.yml`：本地 MySQL 8.0 配置
+- `docs/phase1-implementation.md`：第一阶段实施与验收记录
+- `docs/issues-and-solutions.md`：问题、原因、处理和剩余动作
 
 ## 本地启动
 
-1. 启动数据库：`docker compose up -d mysql`
-2. 启动 API：`dotnet run --project Server/CExam.Api --urls http://localhost:5000`
-3. 检查接口：`http://localhost:5000/health`
-4. 用 Unity 打开项目并运行 `Assets/Scenes/SampleScene.unity`，场景中的 `ApiHealthProbe` 会显示健康检查结果。
+1. 安装并启动 Docker Desktop，确认 `docker --version` 可用。
+2. 启动数据库：`docker compose up -d mysql`
+3. 启动 API：`dotnet run --project Server/CExam.Api --urls http://localhost:5000`
+4. 检查接口：`http://localhost:5000/health`
+5. 用 Unity 打开项目并运行 `Assets/Scenes/SampleScene.unity`，场景中的 `ApiHealthProbe` 会显示健康检查结果。
 
 `/health` 返回 `200` 表示 API 和 MySQL 均可用；返回 `503` 表示 API 已启动但数据库尚未连接。
 
-## 当前验收边界
+## 阶段范围
 
-本次只完成第一阶段基础环境，不包含账号、题库、考试和评测业务。当前机器未检测到 Docker 与 MySQL 命令，因此本地数据库连通性需要安装 Docker Desktop 或 MySQL 8.0 后再验收。
+第一阶段只包含基础环境、健康检查和本地数据库启动配置，不包含账号、题库、考试、代码评测和成绩业务。具体状态见 [`docs/phase1-implementation.md`](docs/phase1-implementation.md)。
