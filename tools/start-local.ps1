@@ -93,6 +93,10 @@ if ($values.ContainsKey('MYSQL_HOST_PORT') -and $values.MYSQL_HOST_PORT) {
 }
 
 Write-Output "Starting project MySQL container on 127.0.0.1:$mysqlHostPort..."
+$existingMysql = & docker compose ps --status running --services 2>$null
+if (Test-PortInUse $mysqlHostPort -and $existingMysql -notcontains 'mysql') {
+    throw "MySQL host port $mysqlHostPort is already in use by another process. Set MYSQL_HOST_PORT in .env to an unused loopback port; no process was stopped."
+}
 Invoke-Docker @('compose', 'up', '-d', 'mysql') | Out-Null
 
 $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
