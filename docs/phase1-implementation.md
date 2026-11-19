@@ -1,6 +1,6 @@
 # 第一阶段实施与验收记录
 
-更新日期：2026-11-19
+更新日期：2026-11-19（复审）
 来源文档：`C语言考试系统开发文档.md` 第 10 节“第 1 阶段：基础环境”，以及需求分析与子系统设计文档的已确认规则。
 
 ## 目标
@@ -22,7 +22,8 @@
 - 将 `MySqlConnector` 固定为 2.6.1。2.4.0 的安全告警已通过升级处理，详见问题记录。
 - 新增 `tools/check-environment.ps1`，支持环境检查、`winget` 安装缺失依赖，以及启动用户拥有的本地 MySQL 开发实例。
 - 已安装 Docker Desktop 4.99.0 和 MySQL Community Server 8.4.9。
-- 已推送提交：`feab6bc`，本次安装工具和状态更新将产生后续提交。
+- 修复 `ApiHealthProbe.cs.meta` 无效 GUID，并同步修复 `SampleScene` 的脚本引用。
+- 已推送最新提交：`85c089a`。
 
 ## 验收证据
 
@@ -34,12 +35,13 @@
 | MySQL 连接 | 已通过 | MySQL 8.4.9 本地实例运行于 `127.0.0.1:3306`，`/health` 返回 200 |
 | Docker 安装 | 已通过 | Docker Desktop 4.99.0 已安装 |
 | Docker 引擎 | 未完成 | WSL2/Virtual Machine Platform 尚未启用，Docker Desktop 显示 stopped |
-| Unity 批处理验证 | 未完成 | Unity 项目已被另一个 Unity 实例占用，批处理启动被拒绝 |
+| Unity 脚本资源导入 | 待人工复验 | 已修复无效 GUID；当前编辑器需关闭/重开或刷新 Asset Database |
+| Unity 批处理验证 | 未完成 | 现有 Unity 实例占用项目，批处理启动被拒绝 |
 | GitHub 推送 | 已通过 | `main` 已与远程提交同步 |
 
 ## 阶段结论
 
-第一阶段的代码实施已完成。MySQL 8.4.9 已安装，并已使用本地开发数据目录验证连接，API `/health` 已返回 HTTP 200；Docker Desktop 已安装但 Docker 引擎仍因 WSL2/虚拟化前置条件未就绪而不可用；Unity 实际运行验证仍待关闭现有编辑器后复验。因此当前状态为“实施完成，部分环境验收完成，Unity/Docker 验收待补”。
+第一阶段的代码实施已完成。MySQL 8.4.9 已安装，并已使用本地开发数据目录验证连接，API `/health` 已返回 HTTP 200；健康探针的 Unity GUID 问题已修复，但 Unity 仍需人工刷新/重开后运行验证；Docker Desktop 已安装但 Docker 引擎仍因 WSL2/虚拟化前置条件未就绪而不可用。因此当前状态为“代码完成，MySQL 验收完成，Unity/Docker 验收待补”。
 
 ## 下一步
 

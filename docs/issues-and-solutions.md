@@ -60,3 +60,10 @@
 - 处理：使用 `C:\Users\hello\AppData\Local\CExam\mysql-data` 初始化用户拥有的开发数据目录，并启动本地 `mysqld`；创建 `c_exam` 数据库和 `exam_app` 开发账号。
 - 验证：API `/health` 返回 HTTP 200，响应为 `{"status":"ok","database":"ok"}`。
 - 状态：开发环境已可用；如需开机自动启动或系统服务，需要管理员权限单独配置。
+
+## ISSUE-009：Unity 健康探针 meta GUID 无效
+
+- 现象：Unity 日志报告 `ApiHealthProbe.cs.meta` 的 GUID 无效，并将场景中的 `ApiHealthProbe` 组件识别为 Missing Script。
+- 原因：前次手写 meta 文件时 GUID 少了 1 位，只有 31 位十六进制字符。
+- 处理：生成 32 位 GUID，并同步更新 `SampleScene.unity` 的脚本引用。
+- 状态：代码已修复并推送；需要人工关闭/重开 Unity 或刷新 Asset Database 后复验。
