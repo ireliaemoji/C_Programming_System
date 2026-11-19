@@ -67,3 +67,11 @@
 - 原因：前次手写 meta 文件时 GUID 少了 1 位，只有 31 位十六进制字符。
 - 处理：生成 32 位 GUID，并同步更新 `SampleScene.unity` 的脚本引用。
 - 状态：代码已修复并推送；需要人工关闭/重开 Unity 或刷新 Asset Database 后复验。
+
+## ISSUE-010：Unity 报告 API unavailable
+
+- 现象：`ApiHealthProbe` 输出 `Cannot connect to destination host`。
+- 原因：探针请求的是 `http://localhost:5000/health`，但当时 ASP.NET Core API 未启动；MySQL 3306 端口本身正常。
+- 处理：启动 `dotnet run --project Server/CExam.Api --urls http://localhost:5000`，随后验证 `/health` 返回 HTTP 200 和 `database: ok`。
+- 结论：这是本地 API 进程生命周期问题，不是 Unity 请求代码或 Docker 引擎问题。
+- 状态：已解决；每次运行 Unity 前需保持 API 进程运行。
