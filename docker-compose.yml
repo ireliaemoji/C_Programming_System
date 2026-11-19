@@ -1,0 +1,15 @@
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: change-root-password
+      MYSQL_DATABASE: c_exam
+      MYSQL_USER: exam_app
+      MYSQL_PASSWORD: change-app-password
+    ports:
+      - "3306:3306"
+    volumes:
+      - c_exam_mysql_data:/var/lib/mysql
+
+volumes:
+  c_exam_mysql_data:
