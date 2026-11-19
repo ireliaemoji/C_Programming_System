@@ -89,6 +89,6 @@
 ## ISSUE-012：换电脑后 Docker 不会自动共享数据
 
 - 原因：容器和 named volume 属于各自宿主机，相同 Compose 文件、卷名或 Git 仓库不会同步实际数据库。
-- 决定：未来以另一台电脑 B 的 Docker MySQL 为唯一数据源，本机 A 通过 B 的 API 访问；首次迁移后避免两边独立写入。
-- 安全边界：个人电脑同样可能暴露端口；当前 `3306:3306` 和示例密码不适合直接共享部署。仅开放受限 API 访问，数据库只在 B 内部可用。
-- 状态：方案已记录，尚未部署或开放网络访问。迁移、版本差异、工具调整与验收见 [多电脑部署文档](multi-computer-deployment.md)。
+- 当前决定：A 开发、B 独立验收，两台电脑各运行本机 API 和独立 Docker MySQL，通过 Git 同步代码、结构迁移、种子数据与脱敏问题记录。共享 B 数据库仅保留为未来部署选项。
+- 安全边界：当前不开放跨电脑 API/数据库端口，不同步真实数据或秘密。Compose 的端口映射、示例密码和原生安装工具仍需在下一轮调整。
+- 状态：方案已记录；新工具与 Docker 验收尚未实施。见 [多电脑方案](multi-computer-deployment.md)、[下一轮任务书](tasks/next-implementation.md) 和 [验收模板](validation/template.md)。
