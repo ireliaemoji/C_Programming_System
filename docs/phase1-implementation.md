@@ -31,21 +31,21 @@
 |---|---|---|
 | API 编译 | 已通过 | `dotnet build Server/CExam.Api/CExam.Api.csproj --no-restore`，0 警告、0 错误 |
 | API 启动 | 已通过 | 已在 `http://localhost:5000` 启动并访问 `/health` |
-| API 无数据库行为 | 已验证 | 当前返回 503，并明确报告 `database: unavailable` |
+| API 无数据库行为 | 已验证 | 先前数据库未启动时返回 503，明确报告 `database: unavailable`；当前正常连接时返回 200 |
 | MySQL 连接 | 已通过 | MySQL 8.4.9 本地实例运行于 `127.0.0.1:3306`，`/health` 返回 200 |
 | Docker 安装 | 已通过 | Docker Desktop 4.99.0 已安装 |
-| Docker 引擎 | 未完成 | WSL2/Virtual Machine Platform 尚未启用，Docker Desktop 显示 stopped |
-| Unity 脚本资源导入 | 待人工复验 | 已修复无效 GUID；当前编辑器需关闭/重开或刷新 Asset Database |
+| Docker 引擎 | 待重启验证 | 用户已执行 VirtualMachinePlatform 和 WSL 功能启用命令，尚未重启；引擎和容器启动待验收 |
+| Unity 实际请求 | 已通过（用户反馈） | 用户提供 `API: {"status":"ok","database":"ok"}` 和 `ApiHealthProbe.cs:20` 成功日志，证明修复后的脚本实际运行 |
 | Unity 批处理验证 | 未完成 | 现有 Unity 实例占用项目，批处理启动被拒绝 |
 | GitHub 推送 | 已通过 | `main` 已与远程提交同步 |
 
 ## 阶段结论
 
-第一阶段的代码实施已完成。MySQL 8.4.9 已安装，并已使用本地开发数据目录验证连接，API `/health` 已返回 HTTP 200；健康探针的 Unity GUID 问题已修复，但 Unity 仍需人工刷新/重开后运行验证；Docker Desktop 已安装但 Docker 引擎仍因 WSL2/虚拟化前置条件未就绪而不可用。因此当前状态为“代码完成，MySQL 验收完成，Unity/Docker 验收待补”。
+原始三项功能验收（API 启动、MySQL 连接、Unity 请求健康检查）已通过；Unity 结果来自用户实际运行日志。环境安装要求中的 Docker 仍待重启后的运行验证，批处理编译检查尚未补做，因此不能宣告所有环境验收结束。状态为“本地功能闭环通过，Docker 环境待验收”。
 
 ## 下一步
 
-1. 以管理员身份启用 WSL2 和 Virtual Machine Platform，重启后启动 Docker Desktop。
-2. Docker 引擎可用时执行 `docker compose up -d mysql`，检查容器健康和端口 3306。
-3. 关闭当前 Unity 编辑器，重新打开项目并运行 `SampleScene`，确认探针显示 API 结果且 Console 无编译错误。
-4. 完成以上验收后再进入第二阶段：账号、用户表、题目表和选择题界面。
+1. 保存工作并重启 Windows，验证 Docker 引擎；功能启用命令已由用户执行。
+2. 用户已确认未来以另一台电脑的 Docker MySQL 为数据源，本机访问其 API。部署和首次迁移按 [多电脑部署文档](multi-computer-deployment.md) 执行，当前未切换。
+3. 启动容器前处理原生 MySQL 与 Docker 的 3306 冲突、版本一致性、示例密码和端口发布范围。
+4. 完成 Docker 运行验证后进入第二阶段；先实现账号、题库和权限，再开放相应远程业务功能。

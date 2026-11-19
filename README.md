@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-第一阶段基础环境的代码和仓库结构已建立，提交已推送到 GitHub。阶段验收仍有两项本机环境工作未完成：启动 MySQL 并验证数据库连接，以及关闭现有 Unity 编辑器实例后完成一次 Unity 批处理编译/运行验证。
+第一阶段的 API、MySQL 和 Unity 健康检查闭环已验证成功。用户已执行 Windows 虚拟机平台/WSL 功能启用命令，尚待重启后验证 Docker 引擎与容器。未来将以另一台电脑的 Docker MySQL 为唯一数据源，本机通过该电脑的 API 访问；该部署尚未实施，详见多电脑部署文档。
 
 ## 目录
 
@@ -12,6 +12,7 @@
 - `tools/check-environment.ps1`：环境检查、可选依赖安装和本地 MySQL 启动工具
 - `docs/phase1-implementation.md`：第一阶段实施与验收记录
 - `docs/issues-and-solutions.md`：问题、原因、处理和剩余动作
+- `docs/multi-computer-deployment.md`：多电脑数据源安排、迁移与安全边界
 
 ## 本地启动
 
@@ -28,3 +29,7 @@
 ## 阶段范围
 
 第一阶段只包含基础环境、健康检查和本地数据库启动配置，不包含账号、题库、考试、代码评测和成绩业务。具体状态见 [`docs/phase1-implementation.md`](docs/phase1-implementation.md)。
+
+## 多电脑部署计划
+
+计划由另一台电脑运行 API 和 Docker MySQL，本机 Unity 连接其 API。Git 和相同卷名不会自动同步数据库；首次迁移后统一写入部署机数据源。当前 Compose 端口映射、示例密码和原生 MySQL 安装工具仍需在远程部署前调整，不能直接当作已完成安全配置使用。详见 [多电脑访问、数据迁移与安全边界](docs/multi-computer-deployment.md)。

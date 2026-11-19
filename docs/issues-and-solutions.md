@@ -51,7 +51,8 @@
 - 原因：当前 PowerShell 不是管理员会话，WSL2 和 Virtual Machine Platform 的状态无法读取或启用；Docker Desktop 的 Linux 后端尚未就绪。
 - 处理：保留 Docker Desktop 安装结果；没有强制修改 Windows 可选功能或重启机器。
 - 下一步：管理员 PowerShell 执行 `wsl --install --no-distribution` 或启用对应 Windows 功能，重启后再启动 Docker Desktop。
-- 状态：待管理员权限和重启。
+- 后续：用户已执行 VirtualMachinePlatform 和 WSL 功能启用命令，尚未重启；不能据此确认 Docker 已恢复。
+- 状态：待重启和引擎/容器验证。
 
 ## ISSUE-008：MySQL 安装后未注册 Windows 服务
 
@@ -66,7 +67,8 @@
 - 现象：Unity 日志报告 `ApiHealthProbe.cs.meta` 的 GUID 无效，并将场景中的 `ApiHealthProbe` 组件识别为 Missing Script。
 - 原因：前次手写 meta 文件时 GUID 少了 1 位，只有 31 位十六进制字符。
 - 处理：生成 32 位 GUID，并同步更新 `SampleScene.unity` 的脚本引用。
-- 状态：代码已修复并推送；需要人工关闭/重开 Unity 或刷新 Asset Database 后复验。
+- 复验：用户已提供 `ApiHealthProbe.cs:20` 的 `API: {"status":"ok","database":"ok"}` 成功日志。
+- 状态：实际场景请求已通过；独立批处理验证仍记录于阶段文档。
 
 ## ISSUE-010：Unity 报告 API unavailable
 
@@ -83,3 +85,10 @@
 - 处理：安全停止开发实例后，以 `--bind-address=127.0.0.1 --mysqlx=0` 重启；同时更新环境工具，后续启动不会再开放 33060。
 - 结果：当前只保留 `127.0.0.1:3306`，API `/health` 仍返回 200。
 - 状态：已解决。
+
+## ISSUE-012：换电脑后 Docker 不会自动共享数据
+
+- 原因：容器和 named volume 属于各自宿主机，相同 Compose 文件、卷名或 Git 仓库不会同步实际数据库。
+- 决定：未来以另一台电脑 B 的 Docker MySQL 为唯一数据源，本机 A 通过 B 的 API 访问；首次迁移后避免两边独立写入。
+- 安全边界：个人电脑同样可能暴露端口；当前 `3306:3306` 和示例密码不适合直接共享部署。仅开放受限 API 访问，数据库只在 B 内部可用。
+- 状态：方案已记录，尚未部署或开放网络访问。迁移、版本差异、工具调整与验收见 [多电脑部署文档](multi-computer-deployment.md)。
