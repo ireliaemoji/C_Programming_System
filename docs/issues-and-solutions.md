@@ -75,3 +75,11 @@
 - 处理：启动 `dotnet run --project Server/CExam.Api --urls http://localhost:5000`，随后验证 `/health` 返回 HTTP 200 和 `database: ok`。
 - 结论：这是本地 API 进程生命周期问题，不是 Unity 请求代码或 Docker 引擎问题。
 - 状态：已解决；每次运行 Unity 前需保持 API 进程运行。
+
+## ISSUE-011：本地 MySQL X Protocol 暴露到所有网卡
+
+- 现象：初始开发实例除了 `127.0.0.1:3306` 外，还监听 `0.0.0.0:33060` 和 `[::]:33060`。
+- 原因：MySQL 8.4 默认启用了 X Plugin；即使普通 SQL 连接绑定到回环地址，X Protocol 仍可能监听所有网卡。
+- 处理：安全停止开发实例后，以 `--bind-address=127.0.0.1 --mysqlx=0` 重启；同时更新环境工具，后续启动不会再开放 33060。
+- 结果：当前只保留 `127.0.0.1:3306`，API `/health` 仍返回 200。
+- 状态：已解决。

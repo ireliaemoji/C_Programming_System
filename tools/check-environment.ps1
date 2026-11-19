@@ -95,7 +95,7 @@ if ($StartMySql) {
     }
     $running = Get-Process mysqld -ErrorAction SilentlyContinue
     if (-not $running) {
-        Start-Process -FilePath $mysqldExe -ArgumentList @("--datadir=$mysqlData", '--port=3306', '--bind-address=127.0.0.1', "--log-error=$mysqlLog", '--console') -WindowStyle Hidden | Out-Null
+        Start-Process -FilePath $mysqldExe -ArgumentList @("--datadir=$mysqlData", '--port=3306', '--bind-address=127.0.0.1', '--mysqlx=0', "--log-error=$mysqlLog", '--console') -WindowStyle Hidden | Out-Null
         Start-Sleep -Seconds 5
     }
     & $mysqlExe --protocol=tcp --host=127.0.0.1 --port=3306 --user=root -e "CREATE DATABASE IF NOT EXISTS c_exam; CREATE USER IF NOT EXISTS 'exam_app'@'localhost' IDENTIFIED BY 'change-me'; GRANT ALL PRIVILEGES ON c_exam.* TO 'exam_app'@'localhost'; FLUSH PRIVILEGES;"
