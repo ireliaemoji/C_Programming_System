@@ -49,7 +49,7 @@
 
 ### 本轮 A 机收尾检查
 
-详见 [A 机验收记录](validation/2026-11-19-A-pending-cb29693.md)。本机当前未发现 Docker CLI，且 Unity 未在可探测路径；因此 Docker 容器、容器认证持久化和 Unity 实际场景请求标为未执行，不能用历史原生 MySQL/Unity 用户反馈替代。
+详见 [A 机验收记录](validation/2026-11-19-A-0bb9dbc.md)。本机当前未发现 Docker CLI，且 Unity 未在可探测路径；因此 Docker 容器、容器认证持久化和 Unity 实际场景请求标为未执行，不能用历史原生 MySQL/Unity 用户反馈替代。
 
 ## 阶段结论
 

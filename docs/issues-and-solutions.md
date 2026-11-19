@@ -105,5 +105,5 @@
 - 现象：旧 `/health` 503 JSON 包含数据库异常消息。
 - 原因：异常消息直接写入客户端响应。
 - 处理：响应仅返回 `status=degraded` 和 `database=unavailable`，异常通过服务端日志记录。
-- 复验：A 机可用 API 启动后用不可用连接配置请求 `/health`，应得到 503 且 JSON 不包含 `detail` 或连接字符串；运行记录见 [A 机验收记录](validation/2026-11-19-A-pending-cb29693.md)。
+- 复验：A 机可用 API 启动后用不可用连接配置请求 `/health`，应得到 503 且 JSON 不包含 `detail` 或连接字符串；运行记录见 [A 机验收记录](validation/2026-11-19-A-0bb9dbc.md)。
 - 状态：代码已实施，现场 Docker/Unity 验证待执行。
