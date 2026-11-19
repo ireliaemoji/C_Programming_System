@@ -22,3 +22,9 @@
 - 数据边界：未操作父目录中用户未跟踪资料；未修改或提交 `ProjectSettings/ProjectSettings.asset` 的用户改动；未删除 Docker 卷、原生 MySQL 数据或强制关闭已有进程。
 - 验证：静态 PowerShell 语法检查、`dotnet build --no-restore`、API 503 脱敏响应检查和文档链接检查；Docker/Unity 实际运行受本机缺少 Docker CLI/Unity 可探测安装阻塞，详见验收记录。
 - 状态：代码与文档已实施，提交/推送后交 B 独立验收；B 记录不得由 A 结果代填。
+
+## 2026-11-19：补充本机 MySQL 端口冲突提示
+
+- 实施：`tools/start-local.ps1` 在启动 Compose 前只读检查宿主机端口；发现不是项目 MySQL 容器占用时立即提示修改 `MYSQL_HOST_PORT`，不停止未知进程。
+- 验证：PowerShell 解析通过，后端重新编译 0 警告、0 错误；Docker 引擎不可用，真实端口占用分支待现场执行。
+- 提交：代码提交 `31227c7`；本记录随后同步。
