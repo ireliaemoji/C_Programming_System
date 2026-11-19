@@ -5,7 +5,7 @@ services:
       MYSQL_ROOT_PASSWORD: change-root-password
       MYSQL_DATABASE: c_exam
       MYSQL_USER: exam_app
-      MYSQL_PASSWORD: change-app-password
+      MYSQL_PASSWORD: change-me
     ports:
       - "3306:3306"
     volumes:
@@ -13,3 +13,4 @@ services:
 
 volumes:
   c_exam_mysql_data:
+

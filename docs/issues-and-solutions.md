@@ -44,3 +44,19 @@
 - 现象：代码已经提交，但本机依赖和 Unity 运行验收未完成。
 - 处理：将状态拆分为“实施完成，环境验收待补”，并在 `phase1-implementation.md` 中记录证据和停止条件。
 - 状态：已解决。
+
+## ISSUE-007：Docker Desktop 已安装但引擎无法启动
+
+- 现象：Docker CLI 29.9.3 和 Compose 插件已安装，但 `docker desktop status` 显示 `stopped`，`docker info` 报 Docker Desktop unable to start。
+- 原因：当前 PowerShell 不是管理员会话，WSL2 和 Virtual Machine Platform 的状态无法读取或启用；Docker Desktop 的 Linux 后端尚未就绪。
+- 处理：保留 Docker Desktop 安装结果；没有强制修改 Windows 可选功能或重启机器。
+- 下一步：管理员 PowerShell 执行 `wsl --install --no-distribution` 或启用对应 Windows 功能，重启后再启动 Docker Desktop。
+- 状态：待管理员权限和重启。
+
+## ISSUE-008：MySQL 安装后未注册 Windows 服务
+
+- 现象：MySQL Community Server 8.4.9 文件已安装，但当前用户没有对应 Windows 服务。
+- 原因：安装器在非管理员会话中无法完成服务注册。
+- 处理：使用 `C:\Users\hello\AppData\Local\CExam\mysql-data` 初始化用户拥有的开发数据目录，并启动本地 `mysqld`；创建 `c_exam` 数据库和 `exam_app` 开发账号。
+- 验证：API `/health` 返回 HTTP 200，响应为 `{"status":"ok","database":"ok"}`。
+- 状态：开发环境已可用；如需开机自动启动或系统服务，需要管理员权限单独配置。
