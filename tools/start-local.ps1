@@ -32,9 +32,16 @@ function Read-DotEnv([string]$Path) {
 }
 
 function Invoke-Docker([string[]]$Arguments) {
-    & docker @Arguments 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        throw "docker $($Arguments -join ' ') failed with exit code $LASTEXITCODE."
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & docker @Arguments *> $null
+        $exitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+    if ($exitCode -ne 0) {
+        throw "docker $($Arguments -join ' ') failed with exit code $exitCode."
     }
 }
 
@@ -86,6 +93,7 @@ if (-not (Test-DockerEngine)) { throw 'Docker engine is unavailable. Start Docke
 
 $env:MYSQL_ROOT_PASSWORD = $values.MYSQL_ROOT_PASSWORD
 $env:MYSQL_PASSWORD = $values.MYSQL_PASSWORD
+$env:MYSQL_PWD = $values.MYSQL_PASSWORD
 if ($values.ContainsKey('MYSQL_HOST_PORT') -and $values.MYSQL_HOST_PORT) {
     $mysqlHostPort = [int]$values.MYSQL_HOST_PORT
 } else {
@@ -93,16 +101,25 @@ if ($values.ContainsKey('MYSQL_HOST_PORT') -and $values.MYSQL_HOST_PORT) {
 }
 
 Write-Output "Starting project MySQL container on 127.0.0.1:$mysqlHostPort..."
-$existingMysql = & docker compose ps --status running --services 2>$null
-if (Test-PortInUse $mysqlHostPort -and $existingMysql -notcontains 'mysql') {
-    throw "MySQL host port $mysqlHostPort is already in use by another process. Set MYSQL_HOST_PORT in .env to an unused loopback port; no process was stopped."
+$existingMysqlContainer = (& docker compose ps -q mysql 2>$null).Trim()
+if ([string]::IsNullOrWhiteSpace($existingMysqlContainer)) {
+    if (Test-PortInUse $mysqlHostPort) {
+        throw "MySQL host port $mysqlHostPort is already in use by another process. Set MYSQL_HOST_PORT in .env to an unused loopback port; no process was stopped."
+    }
 }
 Invoke-Docker @('compose', 'up', '-d', 'mysql') | Out-Null
 
 $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
 do {
-    $check = & docker compose exec -T mysql sh -c 'mysql --protocol=socket -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "SELECT 1"' 2>&1
-    if ($LASTEXITCODE -eq 0) { break }
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & docker compose exec -T -e MYSQL_PWD mysql mysql --protocol=socket -u exam_app c_exam -e 'SELECT 1' *> $null
+        $checkSucceeded = $LASTEXITCODE -eq 0
+    } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+    if ($checkSucceeded) { break }
     if ((Get-Date) -ge $deadline) { throw 'MySQL container did not accept an authenticated SELECT 1 before the timeout.' }
     Start-Sleep -Seconds 2
 } while ($true)
