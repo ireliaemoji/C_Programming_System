@@ -36,3 +36,8 @@
 - 代码修复：发现 Docker Compose 的 stderr 进度和 PowerShell 原生退出码处理会让启动脚本误报失败，已在 `30bc13b` 修复并重新通过脚本解析。
 - 未执行：Unity SampleScene 实际请求；当前 `C:\UnityProject\C_Client` 已有 Unity 编辑器实例，未强制关闭或批处理启动。
 - 状态：A Docker/API/持久化已验证；Unity 和 B 机验收待完成。
+
+## 2026-11-20：A 机 Unity 健康请求验收
+
+- 用户反馈：在 Unity `SampleScene` 运行后，Console 输出 `API: {"status":"ok","database":"ok"}`，调用位置为 `Assets/Scripts/Infrastructure/ApiHealthProbe.cs:20`。
+- 结论：A 机第一阶段的 API、Docker MySQL、持久化和 Unity 健康请求均有证据；B 机仍必须使用自己的环境独立复验。

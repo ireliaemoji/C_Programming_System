@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-第一阶段环境收尾已实施：A/B 使用固定的 MySQL 8.4.9 Docker 镜像、回环端口和各自 `.env` 私密配置；`tools/check-environment.ps1` 默认只读检查，`tools/start-local.ps1` 负责启动项目数据库和本机 API。A 的 Docker/Unity 实际运行验收与 B 的独立验收仍需在具备对应环境的机器上执行。
+第一阶段环境收尾已实施：A/B 使用固定的 MySQL 8.4.9 Docker 镜像、回环端口和各自 `.env` 私密配置；`tools/check-environment.ps1` 默认只读检查，`tools/start-local.ps1` 负责启动项目数据库和本机 API。A 机 Docker、API、持久化和 Unity 健康请求已验证；B 机仍需独立验收。
 
 ## 目录
 
