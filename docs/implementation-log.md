@@ -28,3 +28,11 @@
 - 实施：`tools/start-local.ps1` 在启动 Compose 前只读检查宿主机端口；发现不是项目 MySQL 容器占用时立即提示修改 `MYSQL_HOST_PORT`，不停止未知进程。
 - 验证：PowerShell 解析通过，后端重新编译 0 警告、0 错误；Docker 引擎不可用，真实端口占用分支待现场执行。
 - 提交：代码提交 `31227c7`；本记录随后同步。
+
+## 2026-11-20：A 机 Docker 环境现场验证
+
+- 环境：执行 `wsl --update`、`wsl --shutdown` 成功；重启 Docker Desktop 后 `docker info` 返回 `29.9.3`。
+- 实际验证：生成未跟踪的本机 `.env`，使用 `MYSQL_HOST_PORT=3307`；`mysql:8.4.9` 容器健康，认证 `SELECT 1` 成功；临时持久化记录在 `docker compose restart mysql` 后仍存在并已删除；API `/health` 返回 HTTP 200 和 `database: ok`。
+- 代码修复：发现 Docker Compose 的 stderr 进度和 PowerShell 原生退出码处理会让启动脚本误报失败，已在 `30bc13b` 修复并重新通过脚本解析。
+- 未执行：Unity SampleScene 实际请求；当前 `C:\UnityProject\C_Client` 已有 Unity 编辑器实例，未强制关闭或批处理启动。
+- 状态：A Docker/API/持久化已验证；Unity 和 B 机验收待完成。

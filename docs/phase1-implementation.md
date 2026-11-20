@@ -49,11 +49,11 @@
 
 ### 本轮 A 机收尾检查
 
-详见 [A 机验收记录](validation/2026-11-19-A-0bb9dbc.md)。本机可探测到 Docker CLI/Compose 和 Unity 编辑器，但 Docker 引擎不可用；因此 Docker 容器、容器认证持久化和 Unity 实际场景请求标为未执行，不能用历史原生 MySQL/Unity 用户反馈替代。
+详见 [A 机验收记录](validation/2026-11-19-A-0bb9dbc.md)。本机 Docker 引擎现已恢复，MySQL 8.4.9 容器认证、重启持久化和 API 200 已通过；Unity 实际场景请求仍因已有编辑器实例未执行，不能用历史原生 MySQL/Unity 用户反馈替代。
 
 ## 阶段结论
 
-历史原始三项功能验收（API 启动、原生 MySQL 连接、Unity 请求健康检查）已通过；本轮 Docker 默认环境和失败响应代码已实施，但本机 Docker/Unity 现场验收与 B 机独立验收尚未完成。状态为“环境收尾已提交，A Docker/Unity 与 B 独立验收待执行”。
+历史原始三项功能验收（API 启动、原生 MySQL 连接、Unity 请求健康检查）已通过；本轮 Docker 默认环境、容器持久化和失败响应已验证，Unity 现场请求与 B 机独立验收尚未完成。状态为“A Docker 环境通过，Unity/B 验收待完成”。
 
 ## 下一步
 
