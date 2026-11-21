@@ -107,3 +107,23 @@
 - 处理：响应仅返回 `status=degraded` 和 `database=unavailable`，异常通过服务端日志记录。
 - 复验：A 机可用 API 启动后用不可用连接配置请求 `/health`，应得到 503 且 JSON 不包含 `detail` 或连接字符串；运行记录见 [A 机验收记录](validation/2026-11-19-A-0bb9dbc.md)。
 - 状态：代码已实施，现场 Docker/Unity 验证待执行。
+
+## 2026-11-21 B-ENV-01 环境前置条件未满足
+
+.NET SDK 当前仅检出 3.0.101、8.0.400，项目要求 net10.0；安装脚本存在 dotnet 即不安装新版，因此另外显式调用 winget 安装 SDK 10。Docker 安装尚无成功结果。WSL 安装返回 0x80073d28，明确要求管理员权限；原 wsl --status 也返回失败。Unity 在 D:\UnityHub\unity 找到 2022.3.17f1c1 与 2021.3.33f1c1，未找到要求的 2022.3.62f3c1。需管理员完成安装、按系统提示重启，再复验；Unity 通过 Hub 安装精确版本并完成授权。数据库/API/Unity 请求及持久化尚未执行，不能判定通过。
+
+B-ENV-01 复验：管理员安装已解决 WSL 安装权限阻塞，Docker/Unity/.NET 安装成功；现阻塞为 Windows 功能 RestartNeeded=True。新增脚本 Unity 版本化安装目录发现遗漏，详见 B 验收记录；待 A 修复。
+
+## 2026-11-21 重启后复验
+
+用户反馈已重启。Docker Desktop 启动后引擎 29.9.3 可连接；WSL 3.0.5 可执行。MySQL 8.4.9 镜像拉取完成。
+
+- 首次 start-local.ps1 失败：无容器时 docker compose ps -q mysql 返回空，直接 .Trim() 抛出空值异常。保持源码未改，交 A 修复；通过 docker compose up 继续部署。
+- 3306 被占用，未停止已有服务，将仅本机 .env 的 MYSQL_HOST_PORT 改为 13306；容器发布检查为 127.0.0.1:13306->3306/tcp。
+- 启动脚本数据库应用账号认证 SELECT 1 成功。API 在 http://127.0.0.1:5000/health 返回 200，正文 {"status":"ok","database":"ok"}。
+- 重复 start-local.ps1 成功识别健康 API，保留既有进程。
+- Unity 首次导入及脚本编译完成，编辑器进入 Untitled 场景；SampleScene Play 请求未完成（UI 控制窗口绑定失败），不能标为通过。
+- 包含测试表和容器停止/恢复的组合命令被工具自动审批拒绝，未执行；503 与持久化仍未验证。
+- 当前结论：数据库/API 与重复启动通过；完整 B 验收部分通过。待 A 修复首次启动空值处理及 Unity 安装目录发现问题，B 后续补验 SampleScene、503、数据持久化。
+
+2026-11-21 审查新增 B-ENV-02/03/04：首次空容器 null.Trim、Unity 路径/版本枚举遗漏、已有旧 SDK 时不安装目标 SDK。根因及复现详见 [A/B 审查](validation/2026-11-21-AB-review.md)。

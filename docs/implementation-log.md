@@ -41,3 +41,16 @@
 
 - 用户反馈：在 Unity `SampleScene` 运行后，Console 输出 `API: {"status":"ok","database":"ok"}`，调用位置为 `Assets/Scripts/Infrastructure/ApiHealthProbe.cs:20`。
 - 结论：A 机第一阶段的 API、Docker MySQL、持久化和 Unity 健康请求均有证据；B 机仍必须使用自己的环境独立复验。
+
+## 2026-11-21 B 机首次部署（受阻）
+
+完成仓库克隆及 README、AGENTS、部署方案、当前任务书和脚本阅读。生成本机随机 .env，git check-ignore 确认忽略。通过 winget 发起 Docker Desktop 4.99.0、.NET SDK 10.0.404 安装，下载哈希校验成功；尚未取得安装成功结果，不记为已安装。WSL 3.0.5 安装失败（需要管理员权限）。详细验收见 validation/2026-11-21-B-dce3fcb.md。没有提交或推送。
+
+## 2026-11-21 依赖安装完成
+用户明确授权安装后，Docker Desktop 4.99.0、WSL 3.0.5、Unity 2022.3.62f3c1、SDK 10.0.404 已确认安装。API 编译通过；Windows 功能要求手动重启。详细证据和剩余验收见 validation/2026-11-21-B-dce3fcb.md。
+
+2026-11-21 重启后：完成 Docker 引擎、MySQL 8.4.9 初始化、应用账号认证、API 200 和重复启动验收；本机数据库端口 13306。Unity 导入完成但场景请求待验。详细证据见 B 验收记录。
+
+2026-11-21 完成 A/B 环境对照、B 的 503/恢复、持久化及 Unity 实际请求补验，测试表已清理，源码未改；详见 [审查记录](validation/2026-11-21-AB-review.md)。
+
+2026-11-21 文档交付：按用户授权整理本轮八份文档，更新 README 当前状态，提交并推送 origin/main；不包含 .env、本地日志、数据库数据或业务代码。

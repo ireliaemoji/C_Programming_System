@@ -60,3 +60,11 @@
 1. A 机人工安装/启动 Docker Desktop 和对应 Unity 版本后，按验收记录补做 Docker、持久化和 SampleScene 请求。
 2. B 按同一提交和 [验收模板](validation/template.md) 独立启动 `.env`、容器、API 与 Unity，记录实际结果；A 的结果不等于 B 已通过。
 3. Docker 环境收尾和 B 验收完成后，再另行确认第二阶段账号、题库和权限的最小闭环。
+
+2026-11-21：B 已克隆 dce3fcb 并开始环境准备，运行验收受阻，详见 [B 机记录](validation/2026-11-21-B-dce3fcb.md)。
+
+B 更新：所需依赖安装完成，API 编译通过，Windows 功能待重启；运行验收仍未完成。
+
+B 重启后：数据库/API 和重复启动通过；Unity 场景、503、持久化仍待验证，阶段未全通过。
+
+最新 B 结论：核心运行含 Unity、503、持久化已通过，环境工具缺陷待修复，见 [A/B 审查](validation/2026-11-21-AB-review.md)。

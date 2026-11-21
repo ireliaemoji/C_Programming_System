@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-第一阶段环境收尾已实施：A/B 使用固定的 MySQL 8.4.9 Docker 镜像、回环端口和各自 `.env` 私密配置；`tools/check-environment.ps1` 默认只读检查，`tools/start-local.ps1` 负责启动项目数据库和本机 API。A 机 Docker、API、持久化和 Unity 健康请求已验证；B 机仍需独立验收。
+第一阶段环境收尾已实施：A/B 使用固定的 MySQL 8.4.9 Docker 镜像、回环端口和各自 `.env` 私密配置；`tools/check-environment.ps1` 默认只读检查，`tools/start-local.ps1` 负责启动项目数据库和本机 API。A/B 的 Docker、API、持久化和 Unity 健康请求均已验证；B 发现三项环境工具缺陷待 A 修复，完整阶段尚未通过，见下方 A/B 审查记录。
 
 ## 目录
 
@@ -47,3 +47,5 @@
 ## 多电脑部署计划
 
 本机 A 同时开发客户端和服务端，B 按指定提交独立运行并记录问题，A 修复后 B 复验。两边数据库独立，通过结构迁移和种子数据建立一致的测试条件，不同步整个数据库，也不随 Docker 账号迁移数据。先前共享数据库的方案仅保留为后续集中演示或正式部署选项。详见 [开发与验收方案](docs/multi-computer-deployment.md)。
+
+B 机首次部署进度见 [2026-11-21 验收记录](docs/validation/2026-11-21-B-dce3fcb.md)：核心运行验收（含 Unity、503、持久化）通过；三项环境工具缺陷待修复，详见 [A/B 审查](docs/validation/2026-11-21-AB-review.md)。
