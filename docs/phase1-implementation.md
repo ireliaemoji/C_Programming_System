@@ -23,7 +23,7 @@
 
 - 将 `C:\UnityProject\C_Client` 初始化为 Git 仓库并关联 `https://github.com/ireliaemoji/C_Programming_System.git`。
 - 保留 Unity 2022.3.62f3c1 项目结构和 `SampleScene`。
-- 创建 `Server/CExam.Api` ASP.NET Core 最小 API。
+- 创建 `server/CExam.Api` ASP.NET Core 最小 API。
 - 实现 `GET /health`：连接配置中的 MySQL，执行 `SELECT 1`；成功返回 HTTP 200，数据库不可用返回 HTTP 503。
 - 创建 `docker-compose.yml`，定义 MySQL 8.0、本地数据库 `c_exam` 和应用账号。
 - 在 `SampleScene` 中加入 `ApiHealthProbe`，运行场景时请求 `/health` 并显示结果。
@@ -37,7 +37,7 @@
 
 | 项目 | 当前结果 | 说明 |
 |---|---|---|
-| API 编译 | 已通过 | `dotnet build Server/CExam.Api/CExam.Api.csproj --no-restore`，0 警告、0 错误 |
+| API 编译 | 已通过 | `dotnet build server/CExam.Api/CExam.Api.csproj --no-restore`，0 警告、0 错误 |
 | API 启动 | 已通过 | 已在 `http://localhost:5000` 启动并访问 `/health` |
 | API 无数据库行为 | 已验证 | 先前数据库未启动时返回 503，明确报告 `database: unavailable`；当前正常连接时返回 200 |
 | MySQL 连接 | 已通过 | MySQL 8.4.9 本地实例运行于 `127.0.0.1:3306`，`/health` 返回 200 |
@@ -68,3 +68,5 @@ B 更新：所需依赖安装完成，API 编译通过，Windows 功能待重启
 B 重启后：数据库/API 和重复启动通过；Unity 场景、503、持久化仍待验证，阶段未全通过。
 
 最新 B 结论：核心运行含 Unity、503、持久化已通过，环境工具缺陷待修复，见 [A/B 审查](validation/2026-11-21-AB-review.md)。
+
+2026-11-23：B 反馈的三个环境工具缺陷已在本地修复；本机脚本静态/命令检查通过，Docker 引擎未运行导致环境检查按预期返回失败。需将修复提交交给 B 做首次空环境和准确发现复验后，第一阶段才可正式收尾。

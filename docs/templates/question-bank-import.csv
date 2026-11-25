@@ -1,0 +1,3 @@
+stem,optionA,optionB,optionC,optionD,correctOption,points,visibility,isPublished
+"下列哪个是合法的 C 语言 main 函数声明？","void main()","int main(void)","main()","function main()",2,1,TeacherPrivate,false
+"C 语言中用于输出格式化文本的函数是？","scanf","printf","malloc","strlen",2,1,PublicPractice,true

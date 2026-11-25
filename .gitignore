@@ -109,6 +109,15 @@ crashlytics-build.properties
 /[Aa]ssets/StreamingAssets/aa.meta
 /ServerData/
 
+# Unity client project is kept under client/ in the system repository.
+/client/[Ll]ibrary/
+/client/[Tt]emp/
+/client/[Oo]bj/
+/client/[Bb]uild/
+/client/[Bb]uilds/
+/client/[Ll]ogs/
+/client/[Uu]ser[Ss]ettings/
+
 # EDM4U generated files
 /[Aa]ssets/GeneratedLocalRepo/
 /[Aa]ssets/GeneratedLocalRepo.meta
@@ -144,6 +153,10 @@ crashlytics-build.properties
 # Local development credentials, process state, and logs
 .env
 .local/
+
+# Local IDE metadata and verification outputs
+**/.idea/
+**/artifacts/
 
 !Server/**/*.csproj
 

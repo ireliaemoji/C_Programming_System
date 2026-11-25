@@ -3,8 +3,8 @@ param([switch]$InstallMissing)
 
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$unityVersionFile = Join-Path $projectRoot 'ProjectSettings/ProjectVersion.txt'
-$projectFile = Join-Path $projectRoot 'Server/CExam.Api/CExam.Api.csproj'
+$unityVersionFile = Join-Path $projectRoot 'client/ProjectSettings/ProjectVersion.txt'
+$projectFile = Join-Path $projectRoot 'server/CExam.Api/CExam.Api.csproj'
 $failures = [System.Collections.Generic.List[string]]::new()
 
 function Test-Command([string]$Name) { return $null -ne (Get-Command $Name -ErrorAction SilentlyContinue) }
@@ -26,12 +26,15 @@ function Find-Docker {
 function Find-Unity([string]$ExpectedVersion) {
     $candidates = @(
         (Join-Path ${env:ProgramFiles} 'Unity\Hub\Editor\*\Editor\Unity.exe'),
+        (Join-Path ${env:ProgramFiles} 'Unity\*\Editor\Unity.exe'),
         (Join-Path ${env:ProgramFiles} 'Unity\Editor\Unity.exe'),
-        (Join-Path ${env:LOCALAPPDATA} 'Unity\Hub\Editor\*\Editor\Unity.exe')
+        (Join-Path ${env:LOCALAPPDATA} 'Unity\Hub\Editor\*\Editor\Unity.exe'),
+        (Join-Path ${env:LOCALAPPDATA} 'Unity\*\Editor\Unity.exe')
     )
     foreach ($candidate in $candidates) {
-        $match = Get-ChildItem -Path $candidate -File -ErrorAction SilentlyContinue | Select-Object -First 1
-        if ($match -and $match.VersionInfo.ProductVersion -like "$ExpectedVersion*") { return $match }
+        foreach ($match in (Get-ChildItem -Path $candidate -File -ErrorAction SilentlyContinue)) {
+            if ($match.VersionInfo.ProductVersion -like "$ExpectedVersion*") { return $match }
+        }
     }
     return $null
 }
@@ -63,11 +66,20 @@ if (-not (Test-Path -LiteralPath $unityVersionFile)) {
 
 $targetFramework = ((Select-String -LiteralPath $projectFile -Pattern '<TargetFramework>([^<]+)</TargetFramework>').Matches | Select-Object -First 1).Groups[1].Value
 $requiredDotnetMajor = [int]($targetFramework -replace '^net', '' -replace '\..*$', '')
-if (-not (Test-Command 'dotnet') -and $InstallMissing) { Install-WingetPackage 'Microsoft.DotNet.SDK.10' }
+$dotnetHasRequiredSdk = $false
+if (Test-Command 'dotnet') {
+    $installedSdks = @(& dotnet --list-sdks 2>$null)
+    $dotnetHasRequiredSdk = $installedSdks | Where-Object { $_ -match "^$requiredDotnetMajor\." } | Select-Object -First 1
+}
+if (-not $dotnetHasRequiredSdk -and $InstallMissing) {
+    Install-WingetPackage "Microsoft.DotNet.SDK.$requiredDotnetMajor"
+    $installedSdks = @(& dotnet --list-sdks 2>$null)
+    $dotnetHasRequiredSdk = $installedSdks | Where-Object { $_ -match "^$requiredDotnetMajor\." } | Select-Object -First 1
+}
 if (Test-Command 'dotnet') {
     $dotnetVersion = (& dotnet --version 2>$null).Trim()
     Write-Output ".NET SDK: $dotnetVersion"
-    if ([int]($dotnetVersion.Split('.')[0]) -lt $requiredDotnetMajor) { $failures.Add(".NET SDK $requiredDotnetMajor or newer is required for $targetFramework.") }
+    if (-not $dotnetHasRequiredSdk) { $failures.Add(".NET SDK $requiredDotnetMajor or newer is required for $targetFramework.") }
 } else { $failures.Add(".NET SDK for $targetFramework is missing.") }
 
 $dockerExe = Find-Docker

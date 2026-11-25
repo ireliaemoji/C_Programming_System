@@ -1,0 +1,4 @@
+CExam complete reference prefab saved (PC 2560x1440 / mobile 1080x2160).
+CExam UI validation PASS: 26 renders, nine resolutions, safe area, complete serialized references and button bounds.
+UI_SMOKE_BUILD_PASS
+Exiting without the bug reporter. Application will terminate with return code 0

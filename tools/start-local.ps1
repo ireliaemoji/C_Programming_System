@@ -101,7 +101,7 @@ if ($values.ContainsKey('MYSQL_HOST_PORT') -and $values.MYSQL_HOST_PORT) {
 }
 
 Write-Output "Starting project MySQL container on 127.0.0.1:$mysqlHostPort..."
-$existingMysqlContainer = (& docker compose ps -q mysql 2>$null).Trim()
+$existingMysqlContainer = ((& docker compose ps -q mysql 2>$null) | Out-String).Trim()
 if ([string]::IsNullOrWhiteSpace($existingMysqlContainer)) {
     if (Test-PortInUse $mysqlHostPort) {
         throw "MySQL host port $mysqlHostPort is already in use by another process. Set MYSQL_HOST_PORT in .env to an unused loopback port; no process was stopped."
@@ -138,7 +138,7 @@ if (Test-PortInUse $ApiPort) {
 New-Item -ItemType Directory -Force $stateDirectory | Out-Null
 $env:ConnectionStrings__Default = "Server=127.0.0.1;Port=$mysqlHostPort;Database=c_exam;User=exam_app;Password=$($values.MYSQL_PASSWORD);"
 $env:ASPNETCORE_URLS = "http://127.0.0.1:$ApiPort"
-$apiProcess = Start-Process -FilePath 'dotnet' -WorkingDirectory $projectRoot -ArgumentList @('run', '--project', 'Server/CExam.Api', '--no-launch-profile') -RedirectStandardOutput $apiLog -RedirectStandardError $apiErrorLog -PassThru -WindowStyle Hidden
+$apiProcess = Start-Process -FilePath 'dotnet' -WorkingDirectory $projectRoot -ArgumentList @('run', '--project', 'server/CExam.Api', '--no-launch-profile') -RedirectStandardOutput $apiLog -RedirectStandardError $apiErrorLog -PassThru -WindowStyle Hidden
 $apiProcess.Id | Set-Content -LiteralPath $pidFile
 
 $deadline = (Get-Date).AddSeconds($TimeoutSeconds)

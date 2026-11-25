@@ -1,0 +1,15 @@
+UI check passed: login page
+UI check passed: exam navigation callback
+UI check passed: answer binding
+UI check passed: answer selection visual
+UI check passed: submit confirmation
+UI check passed: cancel confirmation
+UI check passed: next question binding
+UI check passed: mobile resolution switch
+UI check passed: draft retention on layout switch
+UI check passed: answer retention on layout switch
+UI check passed: mobile number drawer
+UI check passed: close drawer
+UI check passed: teacher navigation
+UI check passed: logout
+UI_PLAYER_CHECKS_PASS: prefab Awake, fixed control callbacks, answers, confirmation, mobile drawer, resize state retention, teacher navigation, logout; no API requests.

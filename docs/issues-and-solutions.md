@@ -74,7 +74,7 @@
 
 - 现象：`ApiHealthProbe` 输出 `Cannot connect to destination host`。
 - 原因：探针请求的是 `http://localhost:5000/health`，但当时 ASP.NET Core API 未启动；MySQL 3306 端口本身正常。
-- 处理：启动 `dotnet run --project Server/CExam.Api --urls http://localhost:5000`，随后验证 `/health` 返回 HTTP 200 和 `database: ok`。
+- 处理：启动 `dotnet run --project server/CExam.Api --urls http://localhost:5000`，随后验证 `/health` 返回 HTTP 200 和 `database: ok`。
 - 结论：这是本地 API 进程生命周期问题，不是 Unity 请求代码或 Docker 引擎问题。
 - 状态：已解决；每次运行 Unity 前需保持 API 进程运行。
 
@@ -159,4 +159,133 @@ B-ENV-01 复验：管理员安装已解决 WSL 安装权限阻塞，Docker/Unity
 英文提取把PDF换行处object-oriented的词内连字符误删；已修复并复核其他断行。译文industry-standard先前译作“符合行业标准”容易误导为认证要求，改为“业界通用”。任务书收紧Unity开销比较和公平性措辞。无章节段落遗漏；正文现2607汉字。审校版结构检查通过，7篇中文全文与两份文件视觉分页仍未验收；不将结构检查等同视觉通过。
 
 ## 2026-11-22 归档交付边界
-两份审校版归档至毕设文档/；复制与源文件哈希一致。未因推送而将视觉排版或7篇全文审查标为通过，遗留项不变。既有无关B机待办日志段仅留工作区，不混入本次提交。
+两份审校版归档至docs/graduation/；复制与源文件哈希一致。未因推送而将视觉排版或7篇全文审查标为通过，遗留项不变。既有无关B机待办日志段仅留工作区，不混入本次提交。
+
+## 2026-11-23 远端文档审查遗留项
+
+两份远端审校版的结构和内容检查通过，任务书可作为“基本合理、主要内容完备”的待提交稿。学校专用模板中的学生/专业班级/学号、指导教师、签字和盖章栏仍需按校方要求确认；当前留空是用户明确要求，不视为最终表单验收。`render_docx.py` 因缺少 `soffice.exe` 未生成页面图，分页、字体替代和参考文献换行仍待人工复核；7篇中文文献只有题录或摘要级核验，不能称为全文审查完成。
+
+## 2026-11-23 B 工具问题修复
+
+B-ENV-02：已将 `docker compose ps -q mysql` 输出通过 `Out-String` 转为可安全 `.Trim()` 的字符串，首次无容器时会继续端口占用检查，不再因 null 中断。
+
+B-ENV-03：已覆盖 `C:\Program Files\Unity\<version>\Editor\Unity.exe` 和本地用户版本化目录，并遍历全部候选后按 `ProductVersion` 匹配，已在本机发现项目要求的 Unity 2022.3.62f3c1。
+
+B-ENV-04：已从项目 `TargetFramework` 推导目标 .NET 主版本，检查 `dotnet --list-sdks`；已有旧 SDK 时会在 `-InstallMissing` 下安装目标 SDK，缺失时仍以非零状态报告。当前本机已发现 .NET 10。Docker 引擎未运行，B 端首次启动和空环境复验待在修复提交上执行。
+
+## 2026-11-23 系统开发切片验证边界
+
+A 端已实现账号/会话、题目查询和单选答案提交的首个客户端闭环。启动项目 MySQL 与 API 后，注册/登录、3道题查询、答案写入、错误边界和 Student 访问教师接口返回 403 已通过；Unity 编辑器脚本编译通过，SampleScene PlayMode 的完整 UI 操作仍待人工复验。不能把 API 通过等同于客户端流程完全验收。
+
+## 2026-11-23 班级与考试时间边界
+
+业务层新增班级成员和考试时间窗口。考试创建必须指定学生或班级；开考、保存答案和交卷均由服务端检查开始/结束时间，学生只能查询自己已提交的成绩。A 端已验证班级加入、当前窗口考试、交卷评分和成绩查询；未来仍需补充过期考试和跨班级越权的负向用例。
+
+## 2026-11-23 题库组卷与考试评分切片
+
+业务层已扩展教师建题/修改、组卷、学生开考、逐题保存答案和一次性交卷评分。A 端真实接口已验证教师创建第4题和4题考试，学生获得4题并提交后得到总分1。当前未实现倒计时、断线恢复、程序题评测和成绩查询；这些属于后续业务范围，不应误记为本轮已完成。
+
+## 2026-11-23 题库公开泄露风险修复
+
+原实现仅用 `is_published` 区分题目，公开题目接口会返回所有已发布题目，考试也没有学生分配关系。已增加题目归属和 `TeacherPrivate/ClassOnly/PublicPractice` 可见性、考试分配表；公开接口仅返回公开练习题，学生只能查看分配给自己的考试。教师导入暂采用 Excel 兼容 CSV，原生 `.xlsx` 仍待后续需求确认和依赖评估。
+
+## 2026-11-23 交卷时间校验缺口
+
+现象：原交卷更新 SQL 只检查进行中状态，没有检查考试结束时间；已存在的考试会话在窗口外也可能从开考接口返回。
+
+原因：时间条件只加在创建会话和保存答案路径，读取已有会话、取题和交卷路径未共享完整窗口条件。
+
+处理：在 `StartAttemptAsync`、`GetAttemptQuestionsAsync`、`SaveExamAnswerAsync`、`SubmitAttemptAsync` 统一检查 UTC 开始/结束时间；组卷增加重复题目输入校验。
+
+状态：代码已构建通过；真实过期、未开始和跨班级接口复验待运行环境执行。
+
+## 2026-11-23 UI 与边界验收待执行
+
+本轮已补齐代码路径，但以下证据尚未取得：Unity 2022.3 编辑器重新导入脚本后的 0 编译错误、教师/学生 PlayMode 操作、当前 API 重启后执行 `tools/test-business-boundaries.ps1` 的真实 HTTP 结果，以及 B 端独立复验。未将代码落盘或 API 构建结果写成完整 UI 验收通过。
+
+## 2026-11-23 Unity UI 编译错误
+
+现象：Unity 报告 `ExamClientDemo.cs` 第79、108、140行 CS8076/CS8361/CS1003。
+
+原因：字符串插值中直接嵌入 `condition ? "..." : "..."`，冒号被解析为插值格式语法。
+
+处理：将条件表达式移到插值前的局部 `mark` 变量，再拼接到字符串；未搬迁 C 盘旧 Unity 资源，因为当前错误与资源无关。
+
+状态：已修复；编辑器重新导入后未发现新的同类编译错误，PlayMode 业务操作仍待验收。
+
+## 2026-11-23 Unity Text 调用参数错误
+
+现象：`ExamClientDemo.cs` 多处调用 `Text` 缺少 `color` 对应的重载参数，Unity 报 CS7036。
+
+处理：新增 `Text(Transform, string, int, Color)` 重载，自动生成控件名称并复用五参数实现。
+
+状态：已修复；最新 Unity 脚本导入后未出现新的 CS7036/CS 编译错误。
+
+## 2026-11-23 UI 无文字与导入入口问题
+
+现象：未导入 TextMeshPro Essentials 时，运行时 Canvas 只有按钮色块，没有文字；教师题库导入入口也没有从客户端上传文件。
+
+原因：运行时控件使用 TMP 组件但没有可用 TMP 字体资源；导入接口只存在服务端，客户端工作台没有 multipart 文件上传控件。
+
+处理：改用 Unity 内置 Text/InputField 和内置 Arial 字体；新增可选文件路径和上传按钮，普通教师流程不要求填写导入文件。当前上传格式为 Excel 可打开的 CSV 模板，原生 `.xlsx` 仍未解析。
+
+状态：代码已修复，Unity 最新导入记录后无本脚本 C# 编译错误；PlayMode 上传和真实文件导入待执行。
+
+## 2026-11-23 原生 XLSX 导入
+
+需求将“Excel 文件导入”明确为客户端上传。现有 Excel 兼容 CSV 入口保留，并在服务端增加标准 `.xlsx` 解析，不增加第三方包；只读取第一个工作表，要求首行使用既有九列模板表头。客户端通过 `multipart/form-data` 上传文件名和内容，导入按钮为可选。
+
+状态：API 构建通过；客户端实际上传 `.xlsx` 和错误文件的 PlayMode 验收待执行。
+
+## 2026-11-23 LegacyRuntime 字体修复
+
+- 现象：`Resources.GetBuiltinResource<Font>("Arial.ttf")` 在 Unity 2022.3 抛出 ArgumentException，Canvas 初始化中断。
+- 处理：替换为 Unity 2022.3 支持的 `LegacyRuntime.ttf`。
+- 状态：代码修复完成，待 Unity PlayMode 重新运行确认文字显示和上传流程。
+
+## 2026-11-23 Canvas rebuild loop 警告
+
+现象：`Trying to remove Placeholder (UnityEngine.UI.Text) from rebuild list while we are already inside a rebuild loop.`
+
+原因：动态页面按钮回调内同步执行 `ClearContent()`，销毁 InputField Placeholder 时触发 CanvasUpdateRegistry 重建列表冲突。
+
+处理：新增 `QueueUi`/`ApplyUiNextFrame`，登录、角色页面、考试切题、成绩页和返回操作在下一帧重建 UI；业务请求和数据保持不变。
+
+状态：Unity 最新脚本导入记录之后未出现本脚本编译错误；运行时警告需在 PlayMode 点击切换页面复验。
+
+## 2026-11-23 UI 层接入后的验证边界
+
+本轮将原运行时 Canvas 的通用结构抽到工程内 `Assets/Scripts/UI/`，业务页面通过 `UiRoot` 使用横屏左侧导航、竖屏底部导航和 SafeArea。隔离临时工程的 Unity 2022.3.62f3c1 导入/脚本编译未发现新的 CS 错误；正式客户端因 Unity 编辑器已占用，未强制关闭或抢占实例。
+
+待查事项：正式 `SampleScene` PlayMode 仍需人工确认登录页文字、页面切换不再触发 Canvas rebuild 警告、横屏/竖屏导航切换、刘海/底部 inset 和考试计时/自动保存。上述事项属于运行时验收，不把隔离工程编译结果表述为完整 UI 通过。
+
+## 2026-11-24 UiRoot.RefreshLayout 空引用
+
+- 现象：`UiRoot.Initialize` 调用 `RefreshLayout` 时，第 189 行访问 `horizontalNavigation` 触发 `NullReferenceException`。
+- 原因：`BuildShell` 在同一个 GameObject 上动态添加 `VerticalLayoutGroup` 和 `HorizontalLayoutGroup`；Unity UI 布局组件不支持这种并存方式，第二个引用未建立。
+- 处理：删除运行时根层级构建，新增 `Resources/UI/UiRoot.prefab`；预制体中使用 `DesktopItems`（纵向）和 `MobileItems`（横向）两个独立容器，运行时分别生成按钮并按布局模式切换容器。`UiRoot.BindPrefabReferences` 增加完整引用检查。
+- 状态：隔离 Unity 预制体生成和脚本编译通过；正式工程 PlayMode 需确认实际 prefab 导入和页面切换。
+
+## 2026-11-24 控件挤成窄条且未使用 ArtAssets
+
+- 用户反馈：1920×1080 截图中页面控件挤在左上角，长文本互相覆盖，页面未使用已确认素材。
+- 已证实原因：前版 prefab 中 Content/导航布局组的 `m_ChildControlWidth/Height=0`，`LayoutElement.preferredWidth/Height` 没有控制实际子节点尺寸；内容控件沿用默认 100×100。前版仅保存容器，没有制作完整页面，也没有 Sprite 绑定。之前将 Canvas 序列化的根尺寸/缩放归零直接当作根因的说法缺少运行时证据，本轮以实际布局组配置和渲染结果为准。
+- 修复：固定页面控件完整保存在 prefab，删除运行时控件工厂；列表模板布局开启宽/高控制；绑定 ArtAssets 并设置切片/九宫格；业务脚本只写文本/事件/列表数据。适配以完整设计区为基准，不再逐个改写页面结构。
+- 验证：离屏渲染/边界检查和隔离播放器结果统一记录在 [本轮验收](validation/2026-11-24-ui-reference-layout.md)；真实服务端登录、教师上传和真机仍须单独验收。
+2026-11-24 用户反馈学生端两个考试按钮无法点击。静态检查确认按钮由 `UiList.Add` 动态克隆并绑定回调，但模板按钮的运行时状态未在每次刷新时显式重置，失败请求也会保留临时考试状态，造成“点击无响应”的体验。现已在 `UiList.Add` 清理监听并设置 `interactable`，考试启动显示状态并在失败时清理状态。API 与教师账号登录已验证，Unity Game 窗口鼠标点击待人工复验。
+## 2026-11-24 PublishedList 射线拦截与班级时间考试请求
+
+- 现象：学生端开始考试按钮仍无法点击，教师端班级时间考试显示请求失败。
+- 已证实原因：PC/手机 `PublishedList` 的透明视口 Image 开启 `raycastTarget`，会在动态考试条目的 Button 之前命中射线。服务端班级时间考试接口在本机使用教师令牌、班级 ID、题目 ID 和 UTC 时间窗口请求已返回成功。
+- 处理：关闭两套 `PublishedList` 视口 Image 的射线拦截，并在 `ExamUiPrefabBuilder` 中固定该配置。客户端创建考试在 classIds 文本为空时回退到当前选中班级 ID，增加提交前校验和时间状态提示。
+- 待验证：Unity 重新导入 prefab 后点击两个开始考试按钮，使用教师端完整填写并提交班级时间考试。
+## 2026-11-24 已结束与已完成考试仍触发开考请求
+
+- 现象：班级测试点击后无响应或 404，私有分配考试完成后再次点击显示请求失败。
+- 已证实原因：班级考试 3、4 已超过结束时间，服务端按时间窗口返回 404。私有考试 2 的学生会话状态为 `Submitted`，客户端考试列表未携带会话状态，仍显示“开始考试”并请求取题。
+- 处理：`ExamSummary` 增加 `attemptStatus`，学生考试查询返回当前用户的会话状态。客户端根据状态和 UTC 时间显示“已完成”“已结束”“未开始”或“开始考试”，不可开考条目按钮置灰。服务端开考接口对已提交会话返回其完成状态，客户端不再进入答题页。
+- 验证边界：新输出构建通过并已重启正式 API，HTTP JSON 已复验。Unity PlayMode 仍需点击复验。
+
+## 2026-11-25 教师端缺少学生答卷查看
+
+用户在在线考试验收中发现教师端无法查卷。原有已发布考试列表只显示考试摘要。现已增加归属校验和逐题查卷入口，后续补齐单选题改分和成绩开放。详见[批改与回看验收](validation/2026-11-25-grading-review.md)。

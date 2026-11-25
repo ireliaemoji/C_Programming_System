@@ -1,3 +1,5 @@
+name: c_program_system
+
 services:
   mysql:
     image: mysql:8.4.9

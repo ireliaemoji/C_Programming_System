@@ -18,13 +18,13 @@
 ## 仓库与已知状态
 
 - 仓库：`https://github.com/ireliaemoji/C_Programming_System.git`，分支 `main`。
-- A 上的项目路径：`C:\UnityProject\C_Client`；B 或其他执行机应确认实际路径，不照抄 A 的绝对路径。
-- Unity 版本要求：读取 `ProjectSettings/ProjectVersion.txt`，目前为 `2022.3.62f3c1`。
-- 后端：`Server/CExam.Api`，目前目标 `net10.0`、MySqlConnector `2.6.1`；只有 `/health`，通过 `SELECT 1` 判断数据库可用性。
+- A 当前使用本仓库 checkout；执行机必须通过 `git rev-parse --show-toplevel` 确认实际路径，不照抄旧记录中的 `C:\UnityProject\C_Client`。唯一工作区规则见 [开发工作区说明](../development-workspace.md)。
+- Unity 版本要求：读取 `client/ProjectSettings/ProjectVersion.txt`，目前为 `2022.3.62f3c1`。
+- 后端：`server/CExam.Api`，目前目标 `net10.0`、MySqlConnector `2.6.1`；只有 `/health`，通过 `SELECT 1` 判断数据库可用性。
 - A 已安装 Docker Desktop 和原生 MySQL 8.4.9；后者的数据目录为 `%LOCALAPPDATA%\CExam\mysql-data`，不要删除或覆盖。
 - API/MySQL 闭环曾返回 200；用户也提供了 Unity 的 `API: {"status":"ok","database":"ok"}` 成功日志。这不等于 Docker MySQL 已验收。
 - 最后反馈是用户已执行 WSL/虚拟机平台启用命令、尚未重启；重新核实现状，不能假定仍未重启或已经恢复。
-- A 有用户未提交的 `ProjectSettings/ProjectSettings.asset` 改动；开始前检查 `git status`，不要覆盖、恢复或混入本轮提交。
+- A 有用户未提交的 `client/ProjectSettings/ProjectSettings.asset` 改动；开始前检查 `git status`，不要覆盖、恢复或混入本轮提交。
 - B 尚未实际验收，不能替 B 填“通过”。
 
 ## 实施顺序
