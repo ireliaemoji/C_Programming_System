@@ -72,6 +72,12 @@ public sealed class ExamStore
                     question_id BIGINT NOT NULL,
                     sort_order INT NOT NULL,
                     points INT NOT NULL DEFAULT 1,
+                    stem TEXT NULL,
+                    option_a VARCHAR(500) NULL,
+                    option_b VARCHAR(500) NULL,
+                    option_c VARCHAR(500) NULL,
+                    option_d VARCHAR(500) NULL,
+                    correct_option TINYINT NULL,
                     PRIMARY KEY (exam_id, question_id),
                     CONSTRAINT fk_exam_question_exam FOREIGN KEY (exam_id) REFERENCES exams(id),
                     CONSTRAINT fk_exam_question_question FOREIGN KEY (question_id) REFERENCES questions(id)
@@ -132,6 +138,19 @@ public sealed class ExamStore
                     CONSTRAINT fk_class_member_class FOREIGN KEY (class_id) REFERENCES classes(id),
                     CONSTRAINT fk_class_member_user FOREIGN KEY (user_id) REFERENCES app_users(id)
                 )
+                """, cancellationToken);
+            await EnsureColumnAsync(connection, "exam_questions", "stem", "TEXT NULL", cancellationToken);
+            await EnsureColumnAsync(connection, "exam_questions", "option_a", "VARCHAR(500) NULL", cancellationToken);
+            await EnsureColumnAsync(connection, "exam_questions", "option_b", "VARCHAR(500) NULL", cancellationToken);
+            await EnsureColumnAsync(connection, "exam_questions", "option_c", "VARCHAR(500) NULL", cancellationToken);
+            await EnsureColumnAsync(connection, "exam_questions", "option_d", "VARCHAR(500) NULL", cancellationToken);
+            await EnsureColumnAsync(connection, "exam_questions", "correct_option", "TINYINT NULL", cancellationToken);
+            // Legacy exams can only freeze the question content available at upgrade.
+            await ExecuteAsync(connection, """
+                UPDATE exam_questions eq JOIN questions q ON q.id=eq.question_id
+                SET eq.stem=q.stem, eq.option_a=q.option_a, eq.option_b=q.option_b,
+                    eq.option_c=q.option_c, eq.option_d=q.option_d, eq.correct_option=q.correct_option
+                WHERE eq.correct_option IS NULL
                 """, cancellationToken);
             await EnsureColumnAsync(connection, "exam_answers", "revision", "BIGINT NOT NULL DEFAULT 0", cancellationToken);
             await EnsureColumnAsync(connection, "exams", "start_at", "DATETIME NULL", cancellationToken);
@@ -312,7 +331,7 @@ public sealed class ExamStore
             var examId = Convert.ToInt64(await create.ExecuteScalarAsync(cancellationToken));
             for (var index = 0; index < request.QuestionIds.Count; index++)
             {
-                await using var add = new MySqlCommand("INSERT INTO exam_questions(exam_id, question_id, sort_order, points) SELECT @exam, id, @order, points FROM questions WHERE id=@question AND is_published=TRUE AND (owner_id=@teacher OR owner_id IS NULL)", connection, transaction);
+                await using var add = new MySqlCommand("INSERT INTO exam_questions(exam_id, question_id, sort_order, points, stem, option_a, option_b, option_c, option_d, correct_option) SELECT @exam, id, @order, points, stem, option_a, option_b, option_c, option_d, correct_option FROM questions WHERE id=@question AND is_published=TRUE AND (owner_id=@teacher OR owner_id IS NULL)", connection, transaction);
                 add.Parameters.AddWithValue("@exam", examId);
                 add.Parameters.AddWithValue("@teacher", teacherId);
                 add.Parameters.AddWithValue("@question", request.QuestionIds[index]);
@@ -477,15 +496,14 @@ public sealed class ExamStore
         await using var connection = new MySqlConnection(connectionString);
         await connection.OpenAsync(cancellationToken);
         await using var command = new MySqlCommand("""
-            SELECT q.id, eq.sort_order, q.stem, q.option_a, q.option_b, q.option_c, q.option_d,
-                   COALESCE(a.selected_option,0), q.correct_option, COALESCE(g.points,a.points,0),
+            SELECT eq.question_id, eq.sort_order, eq.stem, eq.option_a, eq.option_b, eq.option_c, eq.option_d,
+                   COALESCE(a.selected_option,0), eq.correct_option, COALESCE(g.points,a.points,0),
                    eq.points, g.attempt_id IS NOT NULL
             FROM exam_attempts t
             JOIN exams e ON e.id=t.exam_id
             JOIN exam_questions eq ON eq.exam_id=t.exam_id
-            JOIN questions q ON q.id=eq.question_id
-            LEFT JOIN exam_answers a ON a.attempt_id=t.id AND a.question_id=q.id
-            LEFT JOIN exam_grade_overrides g ON g.attempt_id=t.id AND g.question_id=q.id
+            LEFT JOIN exam_answers a ON a.attempt_id=t.id AND a.question_id=eq.question_id
+            LEFT JOIN exam_grade_overrides g ON g.attempt_id=t.id AND g.question_id=eq.question_id
             WHERE t.id=@attempt AND t.status='Submitted'
               AND ((@teacher AND e.created_by=@user)
                    OR (NOT @teacher AND t.user_id=@user AND e.grades_published AND e.end_at <= UTC_TIMESTAMP()))
@@ -559,7 +577,7 @@ public sealed class ExamStore
         var result = new List<AttemptQuestionRecord>();
         await using var connection = new MySqlConnection(connectionString);
         await connection.OpenAsync(cancellationToken);
-        await using var command = new MySqlCommand("SELECT q.id, q.stem, q.option_a, q.option_b, q.option_c, q.option_d, a.selected_option, COALESCE(a.revision,0) FROM exam_attempts t JOIN exams e ON e.id=t.exam_id JOIN exam_questions eq ON eq.exam_id=t.exam_id JOIN questions q ON q.id=eq.question_id LEFT JOIN exam_answers a ON a.attempt_id=t.id AND a.question_id=q.id WHERE t.id=@attempt AND t.user_id=@user AND t.status='InProgress' AND (e.end_at IS NULL OR UTC_TIMESTAMP() < e.end_at) ORDER BY eq.sort_order", connection);
+        await using var command = new MySqlCommand("SELECT eq.question_id, eq.stem, eq.option_a, eq.option_b, eq.option_c, eq.option_d, a.selected_option, COALESCE(a.revision,0) FROM exam_attempts t JOIN exams e ON e.id=t.exam_id JOIN exam_questions eq ON eq.exam_id=t.exam_id LEFT JOIN exam_answers a ON a.attempt_id=t.id AND a.question_id=eq.question_id WHERE t.id=@attempt AND t.user_id=@user AND t.status='InProgress' AND (e.end_at IS NULL OR UTC_TIMESTAMP() < e.end_at) ORDER BY eq.sort_order", connection);
         command.Parameters.AddWithValue("@attempt", attemptId);
         command.Parameters.AddWithValue("@user", userId);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -574,11 +592,10 @@ public sealed class ExamStore
         await connection.OpenAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
         await using var lookup = new MySqlCommand("""
-            SELECT q.correct_option, eq.points, e.start_at, e.end_at, a.selected_option, COALESCE(a.revision,0)
+            SELECT eq.correct_option, eq.points, e.start_at, e.end_at, a.selected_option, COALESCE(a.revision,0)
             FROM exam_attempts t
             JOIN exams e ON e.id=t.exam_id
             JOIN exam_questions eq ON eq.exam_id=t.exam_id AND eq.question_id=@question
-            JOIN questions q ON q.id=eq.question_id
             LEFT JOIN exam_answers a ON a.attempt_id=t.id AND a.question_id=eq.question_id
             WHERE t.id=@attempt AND t.user_id=@user AND t.status='InProgress'
             FOR UPDATE

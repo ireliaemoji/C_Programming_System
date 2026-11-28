@@ -35,15 +35,36 @@ public sealed class ExamClientDemo : MonoBehaviour
     private DateTimeOffset? serverNow;
     private TimeSpan serverClockOffset;
     private bool refreshingExpiredAttempt;
+    private float nextExpiredRefresh;
+    private bool DeadlineReached => activeEnd.HasValue && CurrentServerTime >= activeEnd.Value;
     private readonly Dictionary<long, PendingExamAnswer> pendingAnswers = new();
 
     private void Awake() { BuildCanvas(); ShowLogin(); }
 
     private void Update()
     {
-        if (activeExam == null || !activeEnd.HasValue || submitting) return;
+        if (activeExam == null || submitting) return;
+        if (DeadlineReached)
+        {
+            StopAutoSave();
+            foreach (var v in uiRoot.Views)
+            {
+                v.timer.text = "考试时间已结束";
+                v.submitExam.interactable = false;
+                v.submitDialog.SetActive(false);
+                foreach (var option in v.options) option.interactable = false;
+            }
+            if (!refreshingExpiredAttempt && Time.realtimeSinceStartup >= nextExpiredRefresh)
+            {
+                refreshingExpiredAttempt = true;
+                nextExpiredRefresh = Time.realtimeSinceStartup + 2f;
+                StartCoroutine(RefreshExpiredAttempt());
+            }
+            return;
+        }
+        if (autoSave == null && examDraft != null) autoSave = StartCoroutine(AutoSaveLoop());
+        if (!activeEnd.HasValue) return;
         var remaining = activeEnd.Value - CurrentServerTime;
-        if (remaining <= TimeSpan.Zero) { if (!refreshingExpiredAttempt) { refreshingExpiredAttempt = true; SetStatus("考试时间已结束，正在同步最后状态…"); StartCoroutine(RefreshExpiredAttempt()); } return; }
         foreach (var v in uiRoot.Views) v.timer.text = $"剩余 {remaining.Hours:00}:{remaining.Minutes:00}:{remaining.Seconds:00}";
     }
 
@@ -89,12 +110,13 @@ public sealed class ExamClientDemo : MonoBehaviour
         v.nextQuestion.onClick.AddListener(() => ChangeQuestion(1));
         v.submitExam.onClick.AddListener(() =>
         {
+            if (submitting || DeadlineReached) return;
             v.submitSummary.text = $"已答 {attemptQuestions.Count(q => q.selectedOption > 0)} / {attemptQuestions.Length} 题。交卷后本次作答将结束。";
             v.submitDialog.SetActive(true);
         });
         v.cancelSubmit.onClick.AddListener(() => v.submitDialog.SetActive(false));
         v.confirmSubmit.onClick.AddListener(() => { v.submitDialog.SetActive(false); StartCoroutine(SubmitExam()); });
-        v.leaveExam.onClick.AddListener(() => QueueUi(() => { activeExam = null; ShowStudentHome(); }));
+        v.leaveExam.onClick.AddListener(() => { if (!submitting) QueueUi(() => { activeExam = null; ShowStudentHome(); }); });
         v.openQuestionNumbers.onClick.AddListener(() => v.questionDrawer.SetActive(true));
         v.closeQuestionNumbers.onClick.AddListener(() => v.questionDrawer.SetActive(false));
         v.environment.text = "请使用教师分配的账号参加考试。";
@@ -161,7 +183,7 @@ public sealed class ExamClientDemo : MonoBehaviour
             v.questionNumbers.Clear();
             v.previousQuestion.interactable = !submitting && activeQuestion > 0;
             v.nextQuestion.interactable = !submitting && activeQuestion + 1 < attemptQuestions.Length;
-            v.submitExam.interactable = !submitting;
+            v.submitExam.interactable = !submitting && !DeadlineReached;
             v.questionProgress.text = $"第 {(attemptQuestions.Length == 0 ? 0 : activeQuestion + 1)} / {attemptQuestions.Length} 题";
             if (attemptQuestions.Length == 0) { v.questionStem.text = "暂无题目或考试已结束。"; foreach (var b in v.options) b.gameObject.SetActive(false); continue; }
             var q = attemptQuestions[activeQuestion];
@@ -170,7 +192,7 @@ public sealed class ExamClientDemo : MonoBehaviour
             for (var i = 0; i < 4; i++)
             {
                 v.options[i].gameObject.SetActive(true);
-                v.options[i].interactable = !submitting;
+                v.options[i].interactable = !submitting && !DeadlineReached;
                 v.optionLabels[i].text = $"{(char)('A' + i)}. {labels[i]}" + (q.selectedOption == i + 1 ? "  ✓" : "");
                 v.options[i].GetComponent<Image>().color = q.selectedOption == i + 1 ? new Color(.78f, .9f, 1f) : Color.white;
             }
@@ -190,40 +212,67 @@ public sealed class ExamClientDemo : MonoBehaviour
         QueueUi(ShowExam);
     }
 
-    private void SelectOption(int option) { if (submitting) return; attemptQuestions[activeQuestion].selectedOption = option; StartCoroutine(SaveCurrentAnswer()); QueueUi(ShowExam); }
+    private void SelectOption(int option)
+    {
+        if (submitting || DeadlineReached || examDraft == null || activeQuestion >= attemptQuestions.Length) return;
+        var question = attemptQuestions[activeQuestion];
+        question.selectedOption = option;
+        question.revision = ++nextAnswerRevision;
+        pendingAnswers[question.id] = new PendingExamAnswer
+        {
+            questionId = question.id, selectedOption = option, revision = question.revision
+        };
+        WriteDraft();
+        QueueUi(ShowExam);
+    }
+
     private IEnumerator AutoSaveLoop()
     {
         var retryDelay = 1f;
-        while (activeExam != null && !submitting)
+        while (activeExam != null && !submitting && !DeadlineReached)
         {
             yield return new WaitForSecondsRealtime(retryDelay);
-            if (activeExam == null || submitting) yield break;
+            if (activeExam == null || submitting || DeadlineReached) break;
+            var hadPendingAnswers = pendingAnswers.Count != 0;
             var synced = false;
             yield return SyncPendingAnswers(result => synced = result);
+            if (synced && hadPendingAnswers && pendingAnswers.Count == 0) SetStatus("答案同步完成。");
             retryDelay = synced || pendingAnswers.Count == 0 ? 1f : retryDelay >= 60f ? 60f : retryDelay >= 10f ? 30f : retryDelay >= 5f ? 10f : retryDelay >= 2f ? 5f : 2f;
         }
+        autoSave = null;
     }
-    private IEnumerator SaveCurrentAnswer()
-    {
-        if (attempt == null || activeQuestion >= attemptQuestions.Length) yield break; var q = attemptQuestions[activeQuestion]; if (q.selectedOption < 1 || q.selectedOption > 4) yield break;
-        var revision = ++nextAnswerRevision;
-        q.revision = revision;
-        pendingAnswers[q.id] = new PendingExamAnswer { questionId = q.id, selectedOption = q.selectedOption, revision = revision };
-        WriteDraft();
-        var synced = false;
-        yield return UploadPendingAnswer(pendingAnswers[q.id], result => synced = result);
-        if (synced && pendingAnswers.TryGetValue(q.id, out var current) && current.revision == revision)
-        {
-            pendingAnswers.Remove(q.id);
-            WriteDraft();
-            SetStatus("答案已自动保存。");
-        }
-    }
+
     private IEnumerator SubmitExam()
     {
-        if (submitting || attempt == null) yield break; submitting = true; StopAutoSave();
-        yield return Send($"/api/exam-attempts/{attempt.id}/submit", null, "POST", token, _ => { try { examDraft?.Write(Array.Empty<PendingExamAnswer>()); } catch { } examDraft = null; SetStatus("交卷成功，成绩将在教师开放后显示。"); QueueUi(() => { activeExam = null; ShowStudentHome(); }); }); submitting = false;
+        if (submitting || DeadlineReached || activeExam == null || examDraft == null) yield break;
+        submitting = true;
+        StopAutoSave();
+        var synced = false;
+        yield return SyncPendingAnswers(result => synced = result);
+        if (synced && activeExam != null && !DeadlineReached)
+        {
+            yield return Send($"/api/exam-attempts/{attempt.id}/submit", null, "POST", token, _ =>
+            {
+                ClearDraft();
+                SetStatus("交卷成功，成绩将在教师开放后显示。");
+                activeExam = null;
+                QueueUi(ShowStudentHome);
+            });
+        }
+        else if (activeExam != null && !DeadlineReached && pendingAnswers.Count != 0)
+        {
+            SetStatus("还有答案未同步。请检查网络后重新交卷。");
+        }
+        submitting = false;
     }
+
+    private void ClearDraft()
+    {
+        pendingAnswers.Clear();
+        WriteDraft();
+        examDraft = null;
+    }
+
     private void StopAutoSave() { if (autoSave != null) StopCoroutine(autoSave); autoSave = null; }
 
     private IEnumerator Login()
@@ -471,6 +520,10 @@ public sealed class ExamClientDemo : MonoBehaviour
     private IEnumerator StartExam(ExamDto exam)
     {
         activeExam = exam;
+        activeEnd = null;
+        examDraft = null;
+        nextExpiredRefresh = 0;
+        refreshingExpiredAttempt = false;
         attempt = null;
         yield return Send($"/api/exams/{exam.id}/start", null, "POST", token, response =>
         {
@@ -479,6 +532,8 @@ public sealed class ExamClientDemo : MonoBehaviour
             serverNow = ParseDate(attempt.serverNow); UpdateServerClockOffset();
             if (string.Equals(attempt.status, "Submitted", StringComparison.OrdinalIgnoreCase))
             {
+                examDraft = new ExamDraftFile(baseUrl, signedInName, activeExam.id, attempt.id);
+                ClearDraft();
                 SetStatus("本场考试已交卷。教师开放后可在成绩页查看。");
                 activeExam = null;
                 QueueUi(() => ShowPage(UiPage.Exams));
@@ -493,7 +548,22 @@ public sealed class ExamClientDemo : MonoBehaviour
             startingExam = false;
         }
     }
-    private IEnumerator LoadAttemptQuestions() { yield return Send($"/api/exam-attempts/{attempt.id}/questions", null, "GET", token, response => { attemptQuestions = JsonUtility.FromJson<AttemptQuestionEnvelope>($"{{\"items\":{response}}}").items ?? Array.Empty<AttemptQuestionDto>(); activeQuestion = 0; activeEnd = ParseDate(attempt.endAt) ?? ParseDate(activeExam.endAt); LoadDraft(); QueueUi(() => { ShowExam(); StopAutoSave(); autoSave = StartCoroutine(AutoSaveLoop()); }); }); }
+    private IEnumerator LoadAttemptQuestions()
+    {
+        var requestedAttempt = attempt;
+        var opened = false;
+        yield return Send($"/api/exam-attempts/{requestedAttempt.id}/questions", null, "GET", token, response =>
+        {
+            if (attempt != requestedAttempt || activeExam == null) return;
+            attemptQuestions = JsonUtility.FromJson<AttemptQuestionEnvelope>($"{{\"items\":{response}}}").items ?? Array.Empty<AttemptQuestionDto>();
+            activeQuestion = 0;
+            activeEnd = ParseDate(requestedAttempt.endAt) ?? ParseDate(activeExam.endAt);
+            LoadDraft();
+            opened = true;
+            QueueUi(ShowExam);
+        });
+        if (!opened && attempt == requestedAttempt) activeExam = null;
+    }
     private IEnumerator LoadGrades() { yield return Send("/api/grades", null, "GET", token, response => { var grades = JsonUtility.FromJson<GradeEnvelope>($"{{\"items\":{response}}}").items ?? Array.Empty<GradeDto>(); QueueUi(() => ShowGrades(grades)); }); }
     private void ShowGrades(GradeDto[] grades)
     {
@@ -577,7 +647,7 @@ public sealed class ExamClientDemo : MonoBehaviour
     private void LoadDraft()
     {
         examDraft = new ExamDraftFile(baseUrl, signedInName, activeExam.id, attempt.id);
-        nextAnswerRevision = 0;
+        nextAnswerRevision = attemptQuestions.Length == 0 ? 0 : attemptQuestions.Max(question => question.revision);
         pendingAnswers.Clear();
         try
         {
@@ -601,29 +671,37 @@ public sealed class ExamClientDemo : MonoBehaviour
     private void WriteDraft()
     {
         if (examDraft == null) return;
-        var pending = attemptQuestions.Where(item => item.selectedOption is >= 1 and <= 4)
-            .Select(item => new PendingExamAnswer { questionId = item.id, selectedOption = item.selectedOption, revision = item.revision })
-            .ToArray();
+        var pending = pendingAnswers.Values.ToArray();
         try { examDraft.Write(pending); } catch (Exception exception) { SetStatus("本地答案保存失败：" + exception.Message); }
     }
 
     private IEnumerator SyncPendingAnswers(Action<bool> completed)
     {
         if (pendingAnswers.Count == 0) { completed?.Invoke(true); yield break; }
+        var canWrite = false;
+        yield return CheckAttemptStatus(result => canWrite = result);
+        if (!canWrite) { completed?.Invoke(false); yield break; }
         foreach (var pending in pendingAnswers.Values.ToArray())
         {
             var synced = false;
             yield return UploadPendingAnswer(pending, result => synced = result);
             if (!synced) { completed?.Invoke(false); yield break; }
             if (pendingAnswers.TryGetValue(pending.questionId, out var current) && current.revision == pending.revision)
+            {
                 pendingAnswers.Remove(pending.questionId);
+                WriteDraft();
+            }
         }
-        WriteDraft();
         completed?.Invoke(true);
     }
 
     private IEnumerator UploadPendingAnswer(PendingExamAnswer pending, Action<bool> completed)
     {
+        if (DeadlineReached || activeExam == null || attempt == null)
+        {
+            completed?.Invoke(false);
+            yield break;
+        }
         using var request = new UnityWebRequest(baseUrl.TrimEnd('/') + $"/api/exam-attempts/{attempt.id}/answers", "POST");
         request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(JsonUtility.ToJson(new AnswerRequest { questionId = pending.questionId, selectedOption = pending.selectedOption, revision = pending.revision })));
         request.downloadHandler = new DownloadHandlerBuffer();
@@ -636,31 +714,58 @@ public sealed class ExamClientDemo : MonoBehaviour
             completed?.Invoke(true);
             yield break;
         }
-        if (request.responseCode == 409)
-        {
-            SetStatus("本地答案版本较旧，已保留服务器较新答案。");
-            completed?.Invoke(true);
-            yield break;
-        }
+        if (request.responseCode == 409) yield return RefreshConflictingAnswer(pending);
         completed?.Invoke(false);
+    }
+
+    private IEnumerator RefreshConflictingAnswer(PendingExamAnswer pending)
+    {
+        var requestedAttempt = attempt;
+        yield return Send($"/api/exam-attempts/{requestedAttempt.id}/questions", null, "GET", token, response =>
+        {
+            if (attempt != requestedAttempt || activeExam == null) return;
+            var questions = JsonUtility.FromJson<AttemptQuestionEnvelope>($"{{\"items\":{response}}}").items;
+            var latest = questions?.FirstOrDefault(item => item.id == pending.questionId);
+            var index = Array.FindIndex(attemptQuestions, item => item.id == pending.questionId);
+            if (latest == null || index < 0) return;
+            nextAnswerRevision = Math.Max(nextAnswerRevision, latest.revision);
+            if (!pendingAnswers.TryGetValue(pending.questionId, out var current) || current.revision != pending.revision) return;
+            attemptQuestions[index] = latest;
+            pendingAnswers.Remove(pending.questionId);
+            WriteDraft();
+            SetStatus("服务器已有更新的答案，请核对后再交卷。");
+            QueueUi(ShowExam);
+        });
     }
 
     private IEnumerator RefreshExpiredAttempt()
     {
-        if (attempt == null || submitting) yield break;
-        yield return Send($"/api/exam-attempts/{attempt.id}", null, "GET", token, response =>
+        yield return CheckAttemptStatus();
+        refreshingExpiredAttempt = false;
+    }
+
+    private IEnumerator CheckAttemptStatus(Action<bool> canWrite = null)
+    {
+        var requestedAttempt = attempt;
+        if (requestedAttempt == null || activeExam == null) yield break;
+        yield return Send($"/api/exam-attempts/{requestedAttempt.id}", null, "GET", token, response =>
         {
+            if (attempt != requestedAttempt || activeExam == null) return;
             var latest = JsonUtility.FromJson<AttemptDto>(response);
-            serverNow = ParseDate(latest.serverNow); UpdateServerClockOffset();
+            serverNow = ParseDate(latest.serverNow);
+            UpdateServerClockOffset();
+            activeEnd = ParseDate(latest.endAt) ?? activeEnd;
             if (latest.status == "Submitted")
             {
-                pendingAnswers.Clear();
-                WriteDraft();
-                QueueUi(() => { activeExam = null; SetStatus("考试已结束，本地未同步修改未计入答卷。"); ShowStudentHome(); });
+                var hadPendingAnswers = pendingAnswers.Count != 0;
+                ClearDraft();
+                activeExam = null;
+                SetStatus(hadPendingAnswers ? "考试已结束，本地未同步修改未计入答卷。" : "考试已结束，服务器已交卷。");
+                QueueUi(ShowStudentHome);
             }
-            else SetStatus("考试已到截止时间，服务器正在完成交卷。");
+            else if (DeadlineReached) SetStatus("考试已到截止时间，服务器正在完成交卷。");
+            else canWrite?.Invoke(latest.status == "InProgress");
         });
-        refreshingExpiredAttempt = false;
     }
 
     private static DateTimeOffset? ParseDate(string value) => DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var date) ? date : null;

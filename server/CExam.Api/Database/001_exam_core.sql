@@ -49,6 +49,12 @@ CREATE TABLE IF NOT EXISTS exam_questions (
     question_id BIGINT NOT NULL,
     sort_order INT NOT NULL,
     points INT NOT NULL DEFAULT 1,
+    stem TEXT NULL,
+    option_a VARCHAR(500) NULL,
+    option_b VARCHAR(500) NULL,
+    option_c VARCHAR(500) NULL,
+    option_d VARCHAR(500) NULL,
+    correct_option TINYINT NULL,
     PRIMARY KEY (exam_id, question_id),
     CONSTRAINT fk_exam_question_exam FOREIGN KEY (exam_id) REFERENCES exams(id),
     CONSTRAINT fk_exam_question_question FOREIGN KEY (question_id) REFERENCES questions(id)

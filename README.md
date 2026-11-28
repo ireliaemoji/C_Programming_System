@@ -8,13 +8,13 @@
 
 本地演示账号：学生 `student / student123`，教师 `teacher / teacher123`。教师账号由 API 首次访问业务接口时幂等创建，仅用于本地测试。
 
-第一阶段环境收尾已实施：A/B 使用固定的 MySQL 8.4.9 Docker 镜像、回环端口和各自 `.env` 私密配置；`tools/check-environment.ps1` 默认只读检查，`tools/start-local.ps1` 负责启动项目数据库和本机 API。A/B 的 Docker、API、持久化和 Unity 健康请求均已验证；B 发现三项环境工具缺陷待 A 修复，完整阶段尚未通过，见下方 A/B 审查记录。
+第一阶段环境收尾已实施：A/B 使用固定的 MySQL 8.4.9 Docker 镜像、回环端口和各自 `.env` 私密配置；`tools/check-environment.ps1` 默认只读检查，`tools/start-local.ps1` 负责启动项目数据库和本机 API。A/B 的 Docker、API、持久化和 Unity 健康请求均已验证；B 已在修复工作树复验 Unity 发现、配置前环境检查和 API 业务边界。完整阶段仍待指定提交现场验收，见 [修复复验](docs/validation/2026-11-28-B-closeout-fixes.md)。
 
 本项目是系统级仓库；本机路径和唯一工作区规则见 [唯一开发工作区](docs/development-workspace.md)。客户端与服务端在仓库根目录下同级，旧的 `C:\UnityProject\C_Client` 已删除。
 
 ## 目录
 
-- `docs/graduation/`：[毕业设计任务书](docs/graduation/C语言程序设计考试系统的设计与实现_任务书_审校版.docx)与[英文节选及中文翻译](docs/graduation/编程自动评分与反馈工具_英文节选与中文翻译_审校版.docx)。
+- `docs/graduation/`：[毕业设计任务书](docs/graduation/毕设文档/C语言程序设计考试系统的设计与实现_任务书_审校版.docx)与[英文节选及中文翻译](docs/graduation/毕设文档/编程自动评分与反馈工具_英文节选与中文翻译_审校版.docx)。
 - `AGENTS.md`：项目对话、实施与文档同步规则
 - `docs/decisions.md`：已确认决定、方案替代关系和待确认项
 - `docs/implementation-log.md`：每轮实施与验证记录
@@ -72,8 +72,8 @@ UI 层采用工程内独立 uGUI 实现，`client/Assets/Resources/UI/UiRoot.pre
 
 教师在已发布考试中可批改已交卷的单选题。考试结束后，教师确认开放，学生可从成绩页查看自己的答卷与失分明细。见 [批改与回看验收](docs/validation/2026-11-25-grading-review.md)。
 
-正式考试收尾已在 A 机接入服务端到期自动交卷、服务端时间校准、答案 revision、本地待同步草稿和退避补传。B 机验收任务见 [考试收尾验收](docs/tasks/2026-11-25-B-exam-offline-closeout.md)。
+考试使用发布时保存的题面、标准答案和分值。客户端截止前可补传待同步草稿，手动交卷等待保存确认；到期后查询服务端自动交卷结果。B 机验收任务见 [考试收尾验收](docs/tasks/2026-11-25-B-exam-offline-closeout.md)。
 
-API 启动后可执行 `powershell -ExecutionPolicy Bypass -File tools/test-business-boundaries.ps1`，脚本会创建带时间后缀的临时账号和班级，验证过期/未开始考试返回 404、跨班级学生不能开考、其他教师不能维护班级以及学生不能创建教师班级。脚本不会删除数据库卷；测试数据需按本地演示数据清理策略处理。
+API 启动后可执行 `powershell -ExecutionPolicy Bypass -File tools/test-business-boundaries.ps1`，脚本登录本地演示教师并创建临时学生和班级，验证时间、班级、角色边界和试卷历史一致性。使用预先创建的第二位测试教师时，可在 Windows PowerShell 执行 `.\tools\test-business-boundaries.ps1 -OtherTeacher (Get-Credential)` 补测跨教师班级权限。脚本不会删除数据库卷；测试数据需按本地演示数据清理策略处理。
 
 题库导入模板见 [`docs/templates/question-bank-import.csv`](docs/templates/question-bank-import.csv)。当前采用 Excel 兼容 CSV；题目可见性和考试学生分配由服务端控制，公开练习接口不会返回教师私有题。

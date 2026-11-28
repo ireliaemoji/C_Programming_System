@@ -27,7 +27,7 @@
 - `GET /api/teacher/exams/{id}/attempts`、`GET /api/teacher/attempts/{id}/answers`：教师查看自己发布考试的学生答卷列表和逐题答案，服务端校验考试归属。
 - 考试可绑定班级或学生，并设置 UTC 开始/结束时间；服务端在开考、保存答案和交卷时检查时间窗口。
 - 学生只可通过 `GET /api/grades` 及其答卷明细接口查看教师已开放的本人结果。
-- 教师按考试归属查看和批改已交卷答卷，人工分值与总分在同一事务写入。题库分值在组卷时保存到试卷。开放成绩由服务端按数据库时间检查截止，开放后拒绝继续改分。细节见 [D-020](../decisions.md)。
+- 教师按考试归属查看和批改已交卷答卷，人工分值与总分在同一事务写入。题干、选项、标准答案和分值在发布试卷时固化。作答、评分和回看均使用该份试卷数据。开放成绩由服务端按数据库时间检查截止，开放后拒绝继续改分。细节见 [D-020](../decisions.md)。
 - 首次访问业务接口时创建 `app_users`、`questions`、`question_answers` 表并写入三道演示单选题；对应的首个结构迁移保存在 `server/CExam.Api/Database/001_exam_core.sql`。演示账号为 `student / student123`，仅用于本地开发。
 
 ### Unity 客户端
@@ -44,7 +44,7 @@
 - 考试必须创建学生分配关系；学生只能看到分配给自己的考试，不能通过公开题库读取教师私有题。
 - 注册账号统一为 Student；Teacher 权限不由客户端选择产生。
 - 会话当前保存在 API 进程内存，重启 API 会使令牌失效。正式身份框架仍待后续阶段。
-- 考试答案在服务端按 revision 保存，客户端在 Application.persistentDataPath 保存待同步草稿。服务端后台结算截止答卷，截止后的写入会被拒绝。
+- 考试答案在服务端按 revision 保存，客户端在 Application.persistentDataPath 保存待同步草稿。手动交卷先等待待同步答案写入。客户端到期仅查询交卷状态，服务端后台结算截止答卷并拒绝逾期写入。
 - 本地演示密码只写在开发 UI 默认值和文档中，禁止作为生产凭据使用。
 - 导入模板位于 `docs/templates/question-bank-import.csv`，Excel 可直接打开和另存；教师工作台的文件路径和上传按钮是可选项，通过 multipart/form-data 上传到服务端。服务端按扩展名解析 Excel 兼容 CSV 或 `.xlsx` 第一个工作表。
 

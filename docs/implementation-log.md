@@ -272,3 +272,7 @@ Unity 报告在 Canvas rebuild loop 内移除 `Placeholder`。原因是按钮回
 ## 2026-11-25 工作区改动审查
 
 审查了基线提交、已跟踪删除与修改、client/server 新目录、服务端业务、Unity UI、验收记录和临时构建产物。确认 A 机实现已完成，B 机验收尚未执行。发现旧顶层 Assets/Server 与当前 client/server 迁移同时存在，Windows 下 Server/server 路径大小写碰撞，提交前需要单独整理。审查记录见 [工作区改动审查](validation/2026-11-25-workspace-audit.md)。
+
+## 2026-11-28 修复远端候选的 B 机验收问题
+
+基于 `8335622` 在本地分支 `codex/exam-closeout-fixes` 更新 `ExamApi.cs` 与空库结构、Unity 的答卷草稿同步和交卷流程，以及两个 PowerShell 检查入口。以 B 机隔离库和 Unity PlayMode 复验，执行情况见 [修复复验](validation/2026-11-28-B-closeout-fixes.md)。

@@ -28,6 +28,7 @@ function Find-Unity([string]$ExpectedVersion) {
         (Join-Path ${env:ProgramFiles} 'Unity\Hub\Editor\*\Editor\Unity.exe'),
         (Join-Path ${env:ProgramFiles} 'Unity\*\Editor\Unity.exe'),
         (Join-Path ${env:ProgramFiles} 'Unity\Editor\Unity.exe'),
+        (Join-Path ${env:ProgramFiles} "Unity $ExpectedVersion*\Editor\Unity.exe"),
         (Join-Path ${env:LOCALAPPDATA} 'Unity\Hub\Editor\*\Editor\Unity.exe'),
         (Join-Path ${env:LOCALAPPDATA} 'Unity\*\Editor\Unity.exe')
     )
@@ -89,13 +90,22 @@ if (-not $dockerExe) {
 } else {
     Write-Output "Docker CLI: $((& $dockerExe --version 2>$null | Out-String).Trim())"
     $composeVersion = (& $dockerExe compose version 2>$null | Out-String).Trim()
-    if ($LASTEXITCODE -ne 0) { $failures.Add('Docker Compose plugin is missing.') }
+    $composeReady = $LASTEXITCODE -eq 0
+    if (-not $composeReady) { $failures.Add('Docker Compose plugin is missing.') }
     else { Write-Output "Docker Compose: $composeVersion" }
     if (Test-DockerEngine $dockerExe) {
         Write-Output 'Docker engine: READY'
-        $services = & $dockerExe compose ps --status running --services 2>$null
-        if ($services -contains 'mysql') { Write-Output 'Project MySQL container: RUNNING (existing state preserved)' }
-        else { Write-Output 'Project MySQL container: NOT RUNNING (start with tools/start-local.ps1)' }
+        if ($composeReady -and (Test-Path -LiteralPath (Join-Path $projectRoot '.env'))) {
+            Push-Location -LiteralPath $projectRoot
+            try {
+                $services = & $dockerExe compose ps --status running --services
+                if ($LASTEXITCODE -ne 0) { $failures.Add('Unable to inspect project MySQL; check the local .env configuration.') }
+                elseif ($services -contains 'mysql') { Write-Output 'Project MySQL container: RUNNING (existing state preserved)' }
+                else { Write-Output 'Project MySQL container: NOT RUNNING (start with tools/start-local.ps1)' }
+            } finally { Pop-Location }
+        } else {
+            Write-Output 'Project MySQL container: NOT CHECKED (initial setup or Compose unavailable)'
+        }
     } else {
         $failures.Add('Docker CLI is installed but the engine is unavailable; start Docker Desktop. A Windows restart or administrator action may be required.')
     }
