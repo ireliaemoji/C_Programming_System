@@ -104,4 +104,4 @@ A 完成代码并不等于 B 验收已完成。B 暂不可用时，完成可验�
 
 ## 2026-11-28 当前交接
 
-三项候选问题的修复在 `codex/exam-closeout-fixes` 工作树，基于 `8335622`。按 [修复复验](../validation/2026-11-28-B-closeout-fixes.md) 核对本轮证据，再按 [考试收尾验收](2026-11-25-B-exam-offline-closeout.md) 完成指定修复提交的现场复验。通过后重新评估合并和第二阶段剩余范围。
+基于候选 `8335622` 的考试收尾和环境工具已在 B 机按 `fde92db` 通过 [合并前验收](../validation/2026-11-28-B-merge-acceptance.md)。后续工作参见 [第二阶段任务书](phase2-minimal-business-loop.md)，身份框架、持久会话和本地邮件替身仍需实施。

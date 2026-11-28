@@ -276,3 +276,7 @@ Unity 报告在 Canvas rebuild loop 内移除 `Placeholder`。原因是按钮回
 ## 2026-11-28 修复远端候选的 B 机验收问题
 
 基于 `8335622` 在本地分支 `codex/exam-closeout-fixes` 更新 `ExamApi.cs` 与空库结构、Unity 的答卷草稿同步和交卷流程，以及两个 PowerShell 检查入口。以 B 机隔离库和 Unity PlayMode 复验，执行情况见 [修复复验](validation/2026-11-28-B-closeout-fixes.md)。
+
+## 2026-11-28 再次审查与合并前验收
+
+补充待同步答案的状态确认和版本冲突回读。B 机在 `fde92db` 完成独立空库、真实 Unity/API 两次启动、截止后恢复、脚本权限和 MySQL 重启验收。操作、版本及证据见 [合并前验收](validation/2026-11-28-B-merge-acceptance.md)。

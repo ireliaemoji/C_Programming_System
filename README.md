@@ -8,7 +8,7 @@
 
 本地演示账号：学生 `student / student123`，教师 `teacher / teacher123`。教师账号由 API 首次访问业务接口时幂等创建，仅用于本地测试。
 
-第一阶段环境收尾已实施：A/B 使用固定的 MySQL 8.4.9 Docker 镜像、回环端口和各自 `.env` 私密配置；`tools/check-environment.ps1` 默认只读检查，`tools/start-local.ps1` 负责启动项目数据库和本机 API。A/B 的 Docker、API、持久化和 Unity 健康请求均已验证；B 已在修复工作树复验 Unity 发现、配置前环境检查和 API 业务边界。完整阶段仍待指定提交现场验收，见 [修复复验](docs/validation/2026-11-28-B-closeout-fixes.md)。
+第一阶段环境收尾已实施：A/B 使用固定的 MySQL 8.4.9 Docker 镜像、回环端口和各自 `.env` 私密配置；`tools/check-environment.ps1` 默认只读检查，`tools/start-local.ps1` 负责启动项目数据库和本机 API。A/B 的 Docker、API、持久化和 Unity 健康请求均已验证；B 机已验收独立空卷、环境检查、业务权限及 Unity 与真实 API 的考试收尾，见 [合并前验收](docs/validation/2026-11-28-B-merge-acceptance.md)。
 
 本项目是系统级仓库；本机路径和唯一工作区规则见 [唯一开发工作区](docs/development-workspace.md)。客户端与服务端在仓库根目录下同级，旧的 `C:\UnityProject\C_Client` 已删除。
 
@@ -66,7 +66,7 @@ A 端已开始系统开发首个客户端闭环，当前实现和限制见 [闭�
 
 当前业务层还包括教师班级、学生成员、考试时间窗口和学生成绩查询；验证见 [班级考试成绩验收](docs/validation/2026-11-23-class-exam-grade-slice.md)。
 
-Unity `SampleScene` 当前实例化完整 `UiRoot.prefab`，使用预先制作的 PC/手机页面与 Unity 内置 Text/InputField：教师可创建班级、维护成员、可选上传 CSV 或 `.xlsx` 题库并组卷，学生可查看考试、倒计时、自动保存、交卷和查看成绩。TextMeshPro Essentials 不再是运行前置条件。过期/未开始、跨班级和角色越权可用 `tools/test-business-boundaries.ps1` 复验；真实 PlayMode 和 A/B 现场验收仍需单独记录。
+Unity `SampleScene` 当前实例化完整 `UiRoot.prefab`，使用预先制作的 PC/手机页面与 Unity 内置 Text/InputField：教师可创建班级、维护成员、可选上传 CSV 或 `.xlsx` 题库并组卷，学生可查看考试、倒计时、自动保存、交卷和查看成绩。TextMeshPro Essentials 不再是运行前置条件。过期/未开始、跨班级和角色越权可用 `tools/test-business-boundaries.ps1` 复验。B 机已经实际启动 Unity 并通过断线、重启和交卷场景，见上述合并前验收。
 
 UI 层采用工程内独立 uGUI 实现，`client/Assets/Resources/UI/UiRoot.prefab` 保存完整 PC 2560×1440 与手机 1080×2160 基准布局和已确认 ArtAssets；固定页面不再动态生成，数据列表只克隆预制体内部模板。缩放与素材说明见 [基准布局](docs/design/ui-prefab-reference-layout.md)，[渲染和隔离播放器验收](docs/validation/2026-11-24-ui-reference-layout.md)已通过，正式 API 联调、移动真机和 B 端仍待验收。后续步骤见 [UI 交接](docs/tasks/ui-layer-integration.md)。
 
